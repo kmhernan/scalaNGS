@@ -53,15 +53,13 @@ class Fastq(val name: String, val sequence: String, val opt: String, val quality
 
 object FastqParser {
 
-  // Parse SE reads
-  def parseSE(file: String): Iterator[Fastq]={
+  def parseSE(file: String, start: Int, end: Int): Iterator[Fastq]={
     val fh = scala.io.Source.fromFile(file).getLines()
     val git = fh grouped 4
     for {rec <- git}
-      yield new Fastq(rec(0), trim(1, 36, rec(1)), rec(2), trim(1,36,rec(3)))
+      yield new Fastq(rec(0), trim(start, end, rec(1)), rec(2), trim(start, end,rec(3)))
   } 
 
-  // Trim RAD sequences
   def trim(start: Int, end: Int, string: String): String={
     string.slice(start-1, end)
   }
