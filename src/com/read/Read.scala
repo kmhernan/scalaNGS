@@ -27,12 +27,17 @@ trait Read {
  * @function getBarcode		@returns barcode of read (String)
  */
 
-class Fastq(val name: String, val sequence: String, val opt: String, val quality: String) extends Read {
+class Fastq(val name: String, val sequence: String, 
+            val opt: String, val quality: String,
+            val offset: Int) extends Read {
 
   def averageQuality: Float={
-    val test: Array[Int] = this.quality.map(_.toInt).toArray
-    val avg: Float = test.sum / test.length
-     
+    val test: Array[Int] = this.quality.map(_.toInt - this.offset).toArray
+    return test.sum.toFloat / test.length
+  }
+
+  def countN: Int={
+    return this.sequence.count('N')
   }
 
   def repr: Unit={
@@ -44,23 +49,32 @@ class Fastq(val name: String, val sequence: String, val opt: String, val quality
 }
 
 /**
- * @object FastqParser
- * @input file: String	
- * @input start: Int
- * @input end: Int
- * @returns trimmed Fastq instance
+ * @object FastqTools
+ * @function parseRadSE
+ * 	@input file: String	
+ * 	@input start: Int
+ * 	@input end: Int
+ * 	@returns trimmed Fastq instance
+ * @function trimIndex
+ * 	@input start: Int
+ *	@input end: Int
+ *	@input string: String
+ *	@returns trimmed string
  */
 
-object FastqParser {
+object FastqTools {
 
-  def parseSE(file: String, start: Int, end: Int): Iterator[Fastq]={
+  def parseRadSE(file: String, start: Int, end: Int, offset: Int): Iterator[Fastq]={
     val fh = scala.io.Source.fromFile(file).getLines()
     val git = fh grouped 4
     for {rec <- git}
-      yield new Fastq(rec(0), trim(start, end, rec(1)), rec(2), trim(start, end,rec(3)))
+      yield new Fastq(rec(0),
+                      trimIndex(start, end, rec(1)),
+                      rec(2), trimIndex(start, end,rec(3)),
+                      offset)
   } 
 
-  def trim(start: Int, end: Int, string: String): String={
+  def trimIndex(start: Int, end: Int, string: String): String={
     string.slice(start-1, end)
   }
 

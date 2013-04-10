@@ -6,8 +6,13 @@
  */
 import com.read._
 
-object RADtools extends App {
+object RADtools {
 
-  for (record <- FastqParser.parseSE(args(0)))
-    record.repr
+  def main(args: Array[String]): Unit={
+    for (record <- FastqTools.parseRadSE(args(0), 1, 36, 33)){
+      record.repr
+      println(record.averageQuality)
+      println(record.countN)
+    }
+  }
 }
