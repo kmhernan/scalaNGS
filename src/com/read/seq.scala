@@ -4,8 +4,8 @@
  * Package: com.read.Read - contains classes, traits, modules, for NGS reads
  *
  */
+package com.read.seq
 
-package com.read
 import scala.io.Source
 
 // Traits all NGS sequence classes inherit
@@ -55,7 +55,6 @@ class Fastq(val name: String, val sequence: String,
     this.name.split(":").toList.reverse.head
   }
 
-  def isHpoly(good
 }
 
 /**
