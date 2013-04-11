@@ -36,8 +36,13 @@ class Fastq(val name: String, val sequence: String,
     return test.sum.toFloat / test.length
   }
 
-  def countN: Int={
-    return this.sequence.count('N')
+  def ns(p: Char): Boolean = { p == 'N' }
+
+  def isNotMissing(good: Double): Boolean={
+    if (this.sequence.count(ns).toFloat / this.sequence.length < good)
+      true
+    else
+      false
   }
 
   def repr: Unit={
