@@ -9,7 +9,8 @@ import com.read._
 object RADtools {
 
   def main(args: Array[String]): Unit={
-    
+   
+    // Parse arguments 
     if (args.length == 0) Usage
     val arglist = args.toList
     type OptionMap = Map[Symbol, Any]
@@ -23,20 +24,32 @@ object RADtools {
         case "--end" :: value :: tail => nextOption(map ++ Map('end -> value.toInt), tail)
         case "--hpoly" :: value :: tail => nextOption(map ++ Map('hpoly -> value.toDouble), tail)
         case "--maxN" :: value :: tail => nextOption(map ++ Map('maxN -> value.toInt), tail)
-        case "--minN" :: value :: tail => nextOption(map ++ Map('minQ -> value.toInt), tail)
-        case option :: tail => println("Unknown option "+option); sys.exit(1)
+        case "--qual" :: value :: tail => nextOption(map ++ Map('qual -> value.toInt), tail)
+        case "--qv-offset" :: value :: tail => nextOption(map ++ Map('qv_offset -> value.toInt), tail)
+        case option :: tail => println("Unknown option "+option); Usage; sys.exit(1) 
       }
     }  
 
     val options = nextOption(Map(),arglist)
     
-    for (record <- FastqTools.parseRadSE(options('infile).toString, options('start).toInt, options('end).toInt, 33)){
-      if (record.isNotMissing(nLimit))
-        record.repr
+    for (record <- 
+         FastqTools.parseRadSE(options('infile).toString, 
+                               options('start).asInstanceOf[Int], 
+ 			       options('end).asInstanceOf[Int], 
+                               options('qv_offset).asInstanceOf[Int])){
+      if (record.isNotMissing(10))
+        println(record.getBarcode)
     }
   }
 
   def Usage(): Unit={
-    println("WTF")
+    println("-"*80)
+    println("Kyle Hernandez - kmhernan@utexas.edu")
+    println("RADtools - Various tools for handling RAD NGS sequences.")
+    println("-"*80)
+    println("""
+	USAGE: scala RADtools -i file.fastq -o file.fastq --start [Int] --end [Int]
+		              --hpoly [Double] --maxN [Int] --qual [Int] --qv-offset [Int]""")
+    sys.exit(1)
   }
 }

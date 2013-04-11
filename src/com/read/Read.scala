@@ -36,10 +36,10 @@ class Fastq(val name: String, val sequence: String,
     return test.sum.toFloat / test.length
   }
 
-  def ns(p: Char): Boolean = { p == 'N' }
+  def _ns(p: Char): Boolean = { p == 'N' }
 
   def isNotMissing(good: Double): Boolean={
-    if (this.sequence.count(ns).toFloat / this.sequence.length < good)
+    if (this.sequence.count(_ns).toFloat / this.sequence.length < good)
       true
     else
       false
@@ -51,6 +51,11 @@ class Fastq(val name: String, val sequence: String,
     println("Quality: " + quality)
   }
 
+  def getBarcode: String={
+    this.name.split(":").toList.reverse.head
+  }
+
+  def isHpoly(good
 }
 
 /**
