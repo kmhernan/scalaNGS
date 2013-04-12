@@ -14,17 +14,18 @@ object RADtools {
     // Parse arguments 
     if (args.length == 0) mainUsage
     val arglist = args.toList
-    //type OptionMap = Map[Symbol, Any]
-    val options = parseOptions(Map(),arglist)
+    val function = whichFunction(arglist.head)
+    if (function == "illumina"){
+      val options = nextIlluminaOption(Map(),arglist.tail)
+    }
   }
 
-  def parseOptions(map: OptionMap, list: List[String]): OptionMap = {
-    list match {
-      case Nil => map
-      case "-h" :: tail => verboseMainUsage; sys.exit(1)
-      case "illumina" :: tail => nextIlluminaOption(map ++ Map('type -> "illumina"), tail)
-      case "solid" :: tail => nextSOLiDOption(map ++ Map('type -> "solid"), tail)
-      case option :: tail => println("Unknown option "+option); mainUsage; sys.exit(1)
+  def whichFunction(op1: String): String = {
+    op1 match {
+      case "-h" => verboseMainUsage; sys.exit(1)
+      case "illumina" => "illumina"
+      case "solid" => "solid"
+      case option => println("Unknown option "+option); mainUsage; sys.exit(1)
     }
   }
 
@@ -47,7 +48,7 @@ object RADtools {
   def nextIlluminaOption(map: OptionMap, list: List[String]): OptionMap = {
     list match {
       case Nil => map
-      case "-h" :: tail => verboseIlluminaUsage; sys.exit(1)
+      case "-h" :: tail => verboseIlluminaUsage(); sys.exit(1)
       case "-i" :: value :: tail => nextIlluminaOption(map ++ Map('infile -> value), tail)
       case "-o" :: value :: tail => nextIlluminaOption(map ++ Map('outfile -> value), tail) 
       case "--start" :: value :: tail => nextIlluminaOption(map ++ Map('start -> value.toInt), tail)
@@ -57,7 +58,6 @@ object RADtools {
       case "--qual" :: value :: tail => nextIlluminaOption(map ++ Map('qual -> value.toInt), tail)
       case "--qv-offset" :: value :: tail => nextIlluminaOption(map ++ Map('qv_offset -> value.toInt), tail)
       case option :: tail => println("Unknown option "+option); illuminaUsage; sys.exit(1) 
-      case _ => illuminaUsage; sys.exit(1)
     }
   }
 
