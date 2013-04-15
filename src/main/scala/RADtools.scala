@@ -4,6 +4,7 @@
  * 
  * RADtools - Various tools for handling RAD NGS sequences.
  */
+
 import com.read.seq._
 
 object RADtools {

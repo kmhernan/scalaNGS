@@ -1,0 +1,2 @@
+Main-Class: main.scala.RADtools
+Class-Path: scala-library.jar

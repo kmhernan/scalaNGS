@@ -4,6 +4,7 @@
  * Package: com.read.Read - contains classes, traits, modules, for NGS reads
  *
  */
+
 package com.read.seq
 
 import scala.io.Source
