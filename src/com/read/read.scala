@@ -79,21 +79,23 @@ object FastqTools {
     try {
       val gzip = new GZIPInputStream(new FileInputStream(ifile))
       for {rec <- scala.io.Source.createBufferedSource(gzip).getLines() grouped 4}
-        if (opt.isDefinedAt('start) && opt.isDefinedAt('end))
+        if (opt.isDefinedAt('start) && opt.isDefinedAt('end)) 
           yield new Fastq(rec(0), 
                           trimIndex(opt('start).asInstanceOf[Int], 
                                     opt('end).asInstanceOf[Int], 
                                     rec(3)),
-                          opt.('qv_offset).asInstanceOf[Int]))
+                          opt('qv_offset).asInstanceOf[Int]))
+        
       gzip.close()
     } catch {
         case notzip: java.util.zip.ZipException =>
-          for {ref <- scala.io.Source.fromFile(ifile).getLines() grouped 4}
+          for {ref <- scala.io.Source.fromFile(ifile).getLines() grouped 4} 
             yield new Fastq(rec(0),
                             trimIndex(opt('start).asInstanceOf[Int], 
                                       opt('end).asInstanceOf[Int], 
                                       rec(3)),
-                            opt.('qv_offset).asInstanceOf[Int]))
+                            opt('qv_offset).asInstanceOf[Int])
+         
     } finally ostream.close()
   } 
 
