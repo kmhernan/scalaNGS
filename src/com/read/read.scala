@@ -9,7 +9,7 @@ package com.read.seq
 
 import scala.io.Source
 import java.io._
-import java.util.zip.GZIP.InputStream
+import java.util.zip.GZIPInputStream
 
 // Traits all NGS sequence classes inherit
 trait Read {
@@ -31,8 +31,7 @@ trait Read {
  */
 
 class Fastq(val name: String, val sequence: String, 
-            val opt: String, val quality: String,
-            val offset: Int) extends Read {
+            val quality: String, val offset: Int) extends Read {
 
   def averageQuality: Float={
     val test: Array[Int] = this.quality.map(_.toInt - this.offset).toArray
@@ -72,31 +71,38 @@ object FastqTools {
   def parseRadSE(opt: OptionMap): Iterator[Fastq]={
     // Create IO
     val ifile = new File(opt('infile).toString)
-    val ofile = new File(opt('outfile).toString)
-    val ostream = new java.io.PrintWriter(ofile)
+    //val ofile = new File(opt('outfile).toString)
+    //val ostream = new java.io.PrintWriter(ofile)
 
     // Process file and create iterator of Fastq records
     try {
       val gzip = new GZIPInputStream(new FileInputStream(ifile))
-      for {rec <- scala.io.Source.createBufferedSource(gzip).getLines() grouped 4}
+      for (rec <- scala.io.Source.createBufferedSource(gzip).getLines() grouped 4) yield {
         if (opt.isDefinedAt('start) && opt.isDefinedAt('end)) 
-          yield new Fastq(rec(0), 
-                          trimIndex(opt('start).asInstanceOf[Int], 
-                                    opt('end).asInstanceOf[Int], 
-                                    rec(3)),
-                          opt('qv_offset).asInstanceOf[Int]))
-        
-      gzip.close()
+          new Fastq(rec(0), 
+                    trimIndex(opt('start).asInstanceOf[Int], 
+                              opt('end).asInstanceOf[Int], 
+                              rec(1)),
+                    trimIndex(opt('start).asInstanceOf[Int], 
+                              opt('end).asInstanceOf[Int], 
+                              rec(3)),
+                              opt('qv_offset).asInstanceOf[Int])
+        else
+          new Fastq(rec(0), rec(1), rec(3), opt('qv_offset).asInstanceOf[Int])
+      }
     } catch {
         case notzip: java.util.zip.ZipException =>
-          for {ref <- scala.io.Source.fromFile(ifile).getLines() grouped 4} 
-            yield new Fastq(rec(0),
-                            trimIndex(opt('start).asInstanceOf[Int], 
-                                      opt('end).asInstanceOf[Int], 
-                                      rec(3)),
-                            opt('qv_offset).asInstanceOf[Int])
-         
-    } finally ostream.close()
+          for (rec <- scala.io.Source.fromFile(ifile).getLines() grouped 4) yield { 
+            new Fastq(rec(0),
+                      trimIndex(opt('start).asInstanceOf[Int], 
+                                opt('end).asInstanceOf[Int], 
+                                rec(1)),
+                      trimIndex(opt('start).asInstanceOf[Int], 
+                                opt('end).asInstanceOf[Int], 
+                                rec(3)),
+                      opt('qv_offset).asInstanceOf[Int])
+          }
+    }
   } 
 
   def trimIndex(start: Int, end: Int, string: String): String={
