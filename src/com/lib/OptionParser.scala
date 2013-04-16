@@ -83,23 +83,36 @@ object RADtoolsOptions {
   }
 
   def illuminaUsage(): Unit={
-    println("""USAGE: scala RADtools -i file.fastq -o file.fastq --start [Int] --end [Int]
-                      --hpoly [Double] --maxN [Int] --qual [Int] --qv-offset [Int]""")
+    println("USAGE: scala RADtools illumina -i file.fastq -o file.fastq --start [Int]")
+    println("                               --end [Int] --hpoly [Double] --maxN [Int]")
+    println("                               --qual [Int] --qv-offset [Int] [-h]")
   }
 
   def verboseIlluminaUsage(): Unit={
-    println("""USAGE: scala RADtools -i file.fastq -o file.fastq --start [Int] --end [Int]
-                      --hpoly [Double] --maxN [Int] --qual [Int] --qv-offset [Int]""")
+    println("USAGE: scala RADtools illumina -i file.fastq -o file.fastq --start [Int]")
+    println("                               --end [Int] --hpoly [Double] --maxN [Int]")
+    println("                               --qual [Int] --qv-offset [Int] [-h]\n")
+    println("Arguments:")
+    println("  -h		\tshow this help message and exit\n")
+    println("  -i		\tInput: File.fastq")
+    println("  -o		\tOutput: File.fastq")
+    println("  --start		5' trim position (1-based)")
+    println("  --end 		3' trim position (1-based)")
+    println("			e.g. AlfI --start 1 --end 36")
+    println("  --hpoly		Max length of homopolymer region allowed")
+    println("			Expressed as a proportion of the length of the read")
+    println("  --qual		Min average quality allowed")	
+    println("  --qv-offset	\tQuality value offset. GSAF is currently 33 (other option is 64)")	
   }
 
   def solidUsage(): Unit={
-    println("USAGE: scala RADtools solid [-h] -i file.csfasta file.qual -o file.fastq file.qual " +
-            "--start [Int] --end [Int] --hpoly [Double] --qual [Int]")
+    println("USAGE: scala RADtools solid [-h] -i file.csfasta file.qual -o file.fastq file.qual")
+    println("                            --start [Int] --end [Int] --hpoly [Double] --qual [Int]")
   }
 
   def verboseSolidUsage(): Unit={
-    println("USAGE: scala RADtools solid [-h] -i file.csfasta file.qual -o file.fastq file.qual " +
-            "--start [Int] --end [Int] --hpoly [Double] --qual [Int]\n")
+    println("USAGE: scala RADtools solid [-h] -i file.csfasta file.qual -o file.fastq file.qual")
+    println("                            --start [Int] --end [Int] --hpoly [Double] --qual [Int]\n")
     println("Arguments:")
     println("  -h		show this help message and exit\n")
     println("  -i		Input: File.csfasta File.qual")
@@ -122,11 +135,11 @@ object RADtoolsOptions {
     println("usage: scala RADtools [-h] {solid,illumina} ...\n")
     println("Various tools for Illumina or SOLiD RAD reads - Kyle Hernandez - kmhernan@utexas.edu\n")
     println("optional arguments:")
-    println("  -h               show this help message and exit\n")
+    println("  -h\t\tshow this help message and exit\n")
     println("Platform:\n  Which platform are your reads?\n")
     println("{solid,illumina}")
-    println("  solid            Trim and filter SOLiD color-space csfasta files.")
-    println("  illumina Trim and filter Illumina fastq files.")
+    println("  solid\t\tTrim and filter SOLiD color-space csfasta files.")
+    println("  illumina\tTrim and filter Illumina fastq files.")
     sys.exit(1)
   }
 

@@ -5,8 +5,9 @@
  * RADtools - Various tools for handling RAD NGS sequences.
  */
 
-import com.read.seq._
-import com.lib.argparse
+import com.read._
+import com.lib._
+import com.tools._
 
 object RADtools {
 
@@ -15,7 +16,9 @@ object RADtools {
     val Parser = com.lib.argparse.RADtoolsOptions 
     if (args.length == 0) Parser.mainUsage
     val options = Parser.parseOpts(args.toList, Map()) 
-    println(options)
+    
+    if (options('function) == "illumina")
+      com.tools.filters.FilterRAD.illuminaFilter(options) 
   }
 
 }
