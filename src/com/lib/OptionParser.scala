@@ -51,26 +51,25 @@ object RADtoolsOptions {
 
   def checkRequired(map: OptionMap): Boolean = {
     if (map.isDefinedAt('infile) && map.isDefinedAt('outfile)) {
-      if (map.isDefinedAt('start) && map.isDefinedAt('end)) {
-        if(map('function) == "illumina" && map.isDefinedAt('qv_offset))
+      if(map('function) == "illumina" && map.isDefinedAt('qv_offset))
+        true
+      else if (map('function) == "illumina" && ! map.isDefinedAt('qv_offset)) {
+          println("OptionParser Error: Must specify --qv-offset")
+          illuminaUsage
+          sys.exit(1)
+      } else
           true
-        else if (map('function) == "illumina" && ! map.isDefinedAt('qv_offset)) {
-            println("OptionParser Error: Must specify --qv-offset")
-            illuminaUsage
-            sys.exit(1)
-        } else
-             true
-      } else {
-          println("OptionParser Error: Must specific start/stop positions for trimming")
-          if (map('function) == "illumina") {
-            illuminaUsage
+    }/* else {
+        println("OptionParser Error: Must specific start/stop positions for trimming")
+        if (map('function) == "illumina") {
+          illuminaUsage
             sys.exit(1)
           } else {
             solidUsage
             sys.exit(1)
           }
-       }
-    } else {
+    }*/
+    else {
         println("OptionParser Error: Must specify input/output files")
         if(map('function) == "illumina") {
           illuminaUsage

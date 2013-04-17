@@ -28,8 +28,11 @@ object FilterRAD {
       if (isHighQuality(rec, qlim))
         if (isHomopolymer(rec, hlim))
           ct_map("Hpoly") += 1
-        else
+        else {
+          // Passed all filters, write to Fastq file 
+          rec.write(ostream)
           ct_map("Passed") += 1
+        } 
       else
         ct_map("LowQ") += 1
     }
