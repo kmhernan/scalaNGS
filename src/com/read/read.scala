@@ -20,14 +20,7 @@ trait Read {
 }
 
 /**
- * @class Fastq @extends Read
- * @input name: String 		- read name
- * @input sequence: String	- read sequence
- * @input opt: String		- read optional header
- * @input quality: String	- read quality
- * @function averageQuality 	@returns average quality (Float)
- * @function repr		- print representation of instance (Unit)
- * @function getBarcode		@returns barcode of read (String)
+ * Fastq 
  */
 
 class Fastq(val name: String, val sequence: String, 
@@ -58,17 +51,7 @@ class Fastq(val name: String, val sequence: String,
 }
 
 /**
- * @object FastqTools
- * @function parseRadSE
- * 	@input file: String	
- * 	@input start: Int
- * 	@input end: Int
- * 	@returns trimmed Fastq instance
- * @function trimIndex
- * 	@input start: Int
- *	@input end: Int
- *	@input string: String
- *	@returns trimmed string
+ * FastqTools
  */
 
 object FastqTools {
