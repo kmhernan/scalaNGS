@@ -3,16 +3,17 @@
  *
  */
 
-package com.ngs.ngstools
+//package com.ngs.ngstools
 
-import com.ngs.io.IoUtil
+//import com.ngs.io.IoUtil
 import java.io._
 
 /**
  * Command line tool for filtering NGS Fasta/Fastq files.
  *
  */
-object NGSTools {
-  
+object RADTools {
   def main(args: Array[String]): Unit = {
-    val status: Int = new  
+  }
+
+}
