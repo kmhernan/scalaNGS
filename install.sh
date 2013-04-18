@@ -1,11 +1,13 @@
 #!/bin/bash
 
-echo "Installing..."
-scalac -cp src/com/:src/com/lib/:src/com/read/:/src/com/tools/ -d bin/ \
-       src/main/scala/RADtools.scala \
-       src/com/read/read.scala \
-       src/com/lib/OptionParser.scala \
-       src/com/tools/FilterReads.scala
+scalac -sourcepath src \
+-d bin \
+src/scala/com/scalangs/test/ngstest.scala \
+src/scala/com/scalangs/io/ioUtil.scala \
+src/scala/com/scalangs/fastq/FastqReader.scala
 
-echo "Finished..."
-exit 0
+cd bin 
+jar -cfm ../Test.jar ../MANIFEST.MF *
+cd ../
+
+java -jar Test.jar

@@ -3,14 +3,18 @@
  *
  */
 
-package com.scalangs.fastq
+package com.ngs.fastq
 
-import com.scalangs.io
+import com.ngs.io
 import java.io._
 
 /**
  * Represents a literal Fastq record 
  *
+ * @param seqHeader the read name
+ * @param seqLine the sequence
+ * @param qualHeader the optional quality name
+ * @param qualLine the quality
  */
 
 class FastqRecord(
@@ -19,17 +23,34 @@ class FastqRecord(
         val qualHeader: String, 
         val qualLine: String) {
 
+  /**
+   * Get the average Phred-scaled quality score based on the read offset.
+   *
+   * @param qv_offset the quality offset (33/64)
+   * @returns average quality [Double]
+   */
+  def averageQuality(qv_offset: Int): Double = {
+    
+    val qualArr: Array[Int] = this.qualLine.map(_.toInt - qv_offset).toArray
+    qualArr.sum.toDouble / qualArr.length
+  
+  } 
+    
+  // Getters
   def getReadHeader(): String = this.seqHeader
   def getSequence():  String = this.seqLine
   def getQualHeader(): String = this.qualHeader
   def getQuality(): String = this.qualLine
+  def getBarcode(): String = this.seqHeader.split(":").toList.reverse.head
+
 }
 
 /**
  * Reads a fastq file
  *
+ * @param reader instance of BufferedReader
+ * @param file the file from which the buffer was created
  */
-
 class FastqReader(val reader: BufferedReader, val file: File) {
   var nextRecord: FastqRecord = readNextRecord()
 
@@ -76,7 +97,12 @@ class FastqReader(val reader: BufferedReader, val file: File) {
 
 }
 
+/**
+ * Companion object for FastqReader class
+ *
+ */
 object FastqReader {
+
   def parseFastq(file: File): Iterator[FastqRecord] = {
     val rd = new com.scalangs.io.IoUtil
     val reader = rd.openFileForBufferedReading(file)

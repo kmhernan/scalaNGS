@@ -1,2 +1,2 @@
-Main-Class: main.scala.RADtools
+Main-Class: test.Test
 Class-Path: scala-library.jar
