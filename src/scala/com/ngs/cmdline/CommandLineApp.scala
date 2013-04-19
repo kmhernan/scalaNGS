@@ -4,9 +4,18 @@
  */
 
 package com.ngs.cmdline
+import scala.compat.Platform.currentTime
 
-abstract class CommandLineApp {
-  private val commandLine: String
-  private val defaultHeaders: Array[String]("Author: Kyle Hernandez", "Contact: kmhernan@utexas.edu")
+trait CommandLineApp {
+
+  val executionStart: Long = currentTime
+  protected def args: Array[String] = _args
+  private var _args: Array[String] = _
+  
+  def mainInstance(args: Array[String]) = {
+    val commandParser = new CommandLineParser
+    this._args = args
+    println(args.mkString)
+  }
 }
 
