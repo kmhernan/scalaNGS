@@ -5,11 +5,7 @@ class CommandParser(
     programName: String,
     version: String) {
   private val commands = new ListBuffer[Command]
-
-  def split(s: String): (String, String) = s.indexOf('=') match {
-    case -1 => throw new IllegalArgumentException("Expected a key=value pair")
-    case n: Int => (s.slice(0, n), s.slice(n + 1, s.length))
-  }
+  private val NL = System.getProperty("line.separator")
 
   private def add(command: Command) {
     commands += command
@@ -31,23 +27,39 @@ class CommandParser(
       action: (String, Boolean) => Unit) = 
     add(new KeyBooleanValueCommand(name, keyName, valueName, description, action))
 
-  def help(short: Opetion[String], name: String, description: String) = 
-    add(new Help(short, name, description, {this.showUsage; sys.exit}))
+  def help(short: Option[String], name: String, description: String) = 
+    add(new Help(short, name, description, {this.printUsage; sys.exit}))
 
-  private def descriptions: Seq[String] = commands.map(cmd => cmd match {
+  /*private def descriptions: Seq[String] = commands.map(cmd => cmd match {
     case x if x.isHelp =>
-      (x.short { o => "-" + o + " | " + } getOrElse { "" }) + 
-      "--" + x.name + " help" + "\t" + x.description
+      (x.short map { o => "-" + o + " | "} getOrElse { "" }) +
+      "--" + x.name + " help" + NL + "\t" + x.description
     case _ =>
-      (x.name map { o => x.keyName + "=" + x.valueName + " | " } getOrElse { "" } ) +
-      "\t" + x.description
-  })
+      (x.name map { o => x.keyName + "=" + x.valueName + " | " } ) +
+      NL + "\t" + x.description
+  })*/
 
   def usage: String = {
-    val appText = programName map { _ + " " } getOrElse { "" }
+    val appText = programName map { _ + " " }
     val versionText = programName map { prog => 
-      version map { "\t" + pg | " " + _ } getOrElse { "" }
-    } getOrElse { "" }
+      version map { "\t" + prog + " | " + _ }
+    }
+    val commandText = if (commands.isEmpty) {""} else {"[arguments] "}
+    versionText + NL + "Usage: " + programName + commandText + NL + NL
+    //" " + descriptions.mkString(NL + " ") + NL
+  }
+
+  def printUsage = Console.err.println(usage) 
+
+  /**
+   * Parses the commands
+   *
+   */
+  def parse(args: Seq[String]): Boolean = {
+    println(commands)
+    args.foreach(a => println(a)) 
+    true
+  } 
 }
 
 

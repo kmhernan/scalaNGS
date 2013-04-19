@@ -17,6 +17,13 @@ private case class Command(
   def shortDescription = "option " + name 
 }
 
+private object KeyValueParser {
+  def split(s: String): (String, String) = s.indexOf('=') match {
+    case -1 => throw new IllegalArgumentException("Expected a key=value pair")
+    case n: Int => (s.slice(0,n), s.slice(n + 1, s.length))
+  }
+}
+
 /**
  * These classes represent the various types of KeyValue commands and help
  *
@@ -36,7 +43,7 @@ private class KeyValueCommand(
     description: String,
     action: (String, String) => Unit
     ) extends Command(null, name, keyName, valueName, description,
-                     { a: String => action(CommandParser.split(a)._1, CommandParser.split(a)._2) },
+                     { a: String => action(KeyValueParser.split(a)._1, KeyValueParser.split(a)._2) },
                      false, false)
 
 private class KeyIntValueCommand(
@@ -46,7 +53,7 @@ private class KeyIntValueCommand(
     description: String,
     action: (String, Int) => Unit
     ) extends Command(null, name, keyName, valueName, description,
-                      { a: String => action(CommandParser.split(a)._1, CommandParser.split(a)_2.toInt) },
+                      { a: String => action(KeyValueParser.split(a)._1, (KeyValueParser.split(a)_2).toInt) },
          	      false, false)
 
 private class KeyDoubleValueCommand(
@@ -56,7 +63,7 @@ private class KeyDoubleValueCommand(
     description: String,
     action: (String, Double) => Unit
     ) extends Command(null, name, keyName, valueName, description,
-                      { a: String => action(CommandParser.split(a)._1, CommandParser.split(a)_2.toDouble) },
+                      { a: String => action(KeyValueParser.split(a)._1, (KeyValueParser.split(a)_2).toDouble) },
          	      false, false)
 
 private class KeyBooleanValueCommand(
@@ -65,16 +72,16 @@ private class KeyBooleanValueCommand(
     valueName: String,
     description: String,
     action: (String, Boolean) => Unit
-    ) extends Command(null, name, valueName, description,
+    ) extends Command(null, name, keyName, valueName, description,
                       { a: String => 
-                           val x = CommandParser.split(a)
+                           val x = KeyValueParser.split(a)
                            val key = x._1
                            val boolVal = x._2.toLowerCase match {
                              case "true" => true
                              case "false" => false
                              case _ => throw new IllegalArgumentException("Expected boolean")
                            }
-                           action(key, boolVal),
+                           action(key, boolVal)
                       }, false, false)
 
 
