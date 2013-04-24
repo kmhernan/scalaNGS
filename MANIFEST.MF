@@ -1,2 +1,0 @@
-Main-Class: test.Test
-Class-Path: scala-library.jar
