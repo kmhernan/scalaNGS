@@ -76,12 +76,11 @@ class IoUtil {
    * Curerntly doesn't support zipped files.
    *
    * @param file the file to output to
-   * @returns OutputStream
+   * @returns OutputStreamWriter
    */
-  def openFileForWriting(file: File): OutputStream = {
-
+  def openFileForWriting(file: File): OutputStreamWriter = {
     try
-      new FileOutputStream(file)
+      new OutputStreamWriter(new FileOutputStream(file))
     catch {
       case ioe: IOException => println("Error opening file: " + file.getName() + " " + ioe); sys.exit(1);
       case e: Throwable => {
@@ -108,17 +107,13 @@ class IoUtil {
   /**
    * Throws IOException on error unlike PrintWriter
    *
-   */
+   *
   def openFileForBufferedWriting(file: File): BufferedWriter = {
-
     new BufferedWriter(new OutputStreamWriter(openFileForWriting(file)))
+  }*/
 
+  def closer(stream: Closeable): Unit = {
+      stream.close()
   }
-
-  /*def close(stream: Any): Unit = {
-    stream match {
-      case BufferedReader => stream.close()
-      case InputStreamReader => stream.close()
-    }*/ 
 
 }

@@ -21,7 +21,13 @@ class CSFastaRecord(
     val string = "0" * (this.seqLine.length * polyLimit).toInt
     if (this.seqLine.contains(string)) true else false
   } 
-  //def write(ofa: 
+  
+  def writeToFile(ofa: OutputStreamWriter, oq: OutputStreamWriter): Unit = {
+    ofa.write(this.seqHeader + "\n")
+    ofa.write(this.seqLine + "\n")
+    oq.write(this.qualHeader + "\n")
+    oq.write(this.qualLine + "\n")
+  } 
 }
 
 /**

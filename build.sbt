@@ -2,11 +2,6 @@ import AssemblyKeys._
 
 assemblySettings
 
-jarName in assembly += "NGSTools.jar"
-
-//mainClass in assembly := com.kmh.ngs.NGSTools
-
-// --------------------------------------------------------
 // Basic settings
 
 name := "NGSTools"
@@ -23,8 +18,12 @@ description := "A full suite of NGS tools"
 
 scalaVersion := "2.10.0"
 
-//mainClass := com.kmh.ngs.NGSTools
-
 // Dependencies
 
+libraryDependencies ++= Seq(
+  "org.eintr.loglady" %% "loglady" % "1.1.0",
+  "ch.qos.logback" % "logback-classic" % "0.9.29")
+
 //libraryDependencies += "org.clapper" % "grizzled-scala_2.10" % "1.1.3" 
+
+//libraryDependencies += "com.dongxiguo" %% "zero-log" % "0.3.3" 
