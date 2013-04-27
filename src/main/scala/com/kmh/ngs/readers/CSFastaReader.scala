@@ -1,5 +1,35 @@
-package com.kmh.ngs.csfasta
-import java.io._
+/**
+ * This is free and unencumbered software released into the public domain.
+ *
+ * Anyone is free to copy, modify, publish, use, compile, sell, or
+ * distribute this software, either in source code form or as a compiled
+ * binary, for any purpose, commercial or non-commercial, and by any
+ * means.
+ *
+ * In jurisdictions that recognize copyright laws, the author or authors
+ * of this software dedicate any and all copyright interest in the
+ * software to the public domain. We make this dedication for the benefit
+ * of the public at large and to the detriment of our heirs and
+ * successors. We intend this dedication to be an overt act of
+ * relinquishment in perpetuity of all present and future rights to this
+ * software under copyright law.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+ * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+ * MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+ * IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY CLAIM, DAMAGES OR
+ * OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE,
+ * ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+ * OTHER DEALINGS IN THE SOFTWARE.
+ *
+ *
+ * For more information, please refer to <http://unlicense.org/>
+ *
+ */
+
+package com.kmh.ngs
+package readers
+import java.io.{File, OutputStreamWriter, BufferedReader, IOException}
 import scala.collection.mutable.ListBuffer
 
 /** 
@@ -12,26 +42,50 @@ class CSFastaRecord(
 	val qualHeader: String,
 	val qualLine: String) {
 
-  def averageQuality = {
+  /**
+   * @method averageQuality - returns the average quality of the current record
+   * @return the average quality of the read.
+   */
+  def averageQuality: Double = {
     val qualArray = this.qualLine.split(" ").map(_.toDouble).toArray
     qualArray.sum / qualArray.length
   }
 
+  /**
+   * @method isHomopolyer - tests whether the current read is a homopolymer based on user cutoff
+   * @param polyLimit - the cutoff length to consider homopolymer, represented as a proportion of
+			total read length
+   * @return true if is a homopolymer else false
+   *
+   */
   def isHomopolymer(polyLimit: Double) = {
     val string = "0" * (this.seqLine.length * polyLimit).toInt
     if (this.seqLine.contains(string)) true else false
   } 
-  
+ 
+  /**
+   * @method writeToFile - writes the current record to a file
+   * @param ofa - file for csfasta reads
+   * @param oq - file for quals
+   *
+   */ 
   def writeToFile(ofa: OutputStreamWriter, oq: OutputStreamWriter): Unit = {
     ofa.write(this.seqHeader + "\n")
     ofa.write(this.seqLine + "\n")
     oq.write(this.qualHeader + "\n")
     oq.write(this.qualLine + "\n")
   } 
+
 }
 
 /**
- * Class with parsing tools
+ * @class CSFastaReader - reader class for CSFasta files 
+ * @param seqReader - input stream for a csfasta file
+ * @param qualReader - input stream for a qual file
+ * @param seqFile - input csfasta file
+ * @param qualFile - input quality file
+ * @param start - optional 1-based index for trimming 5' end
+ * @param end - optional 1-based index for trimming 3' end
  *
  */
 class CSFastaReader(
@@ -43,10 +97,9 @@ class CSFastaReader(
         val end: Option[Int]) {
   var nextRecord: CSFastaRecord = readNextRecord
 
-
   /**
-   * Reads next record from files and does some
-   * checks
+   * @method readNextRecord - Reads next record from files 
+   * 
    */
   def readNextRecord: CSFastaRecord = {
     try {
@@ -88,13 +141,13 @@ class CSFastaReader(
   }
 
   /**
-   * Checks if there is a next record
+   * @method hasNext - Checks if there is a next record
    *
    */
   def hasNext: Boolean = { nextRecord != null }
 
   /**
-   * Returns next record
+   * @method next - Returns next record
    *
    */ 
   def next: CSFastaRecord = {
@@ -104,7 +157,7 @@ class CSFastaReader(
   }
 
   /**
-   * Trims sequence based on user-input
+   * @method trimSeq - Trims sequence based on user-input
    *
    */
   def trimSeq(st: Option[Int], en: Option[Int], string: String): String = {
@@ -162,7 +215,7 @@ class CSFastaReader(
   }
 
   /**
-   * Trims quality based on user input
+   * @method trimQ - Trims quality based on user input
    *
    */
   def trimQ(st: Option[Int], en: Option[Int], string: String): String = {
@@ -180,7 +233,7 @@ class CSFastaReader(
 }
 
 /**
- * Companion object for CSFastaReader class
+ * @object CSFastaReader - Companion object for CSFastaReader class
  *
  */
 object CSFastaReader {

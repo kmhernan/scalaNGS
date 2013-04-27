@@ -30,11 +30,12 @@
 package com.kmh.ngs.tools
 import scala.collection.mutable
 import java.io.File
-import com.kmh.ngs.csfasta._
+import com.kmh.ngs.readers._
 import org.eintr.loglady.Logging
 
 /**
  * @class FilterReads - Filters NGS reads based on user inputs 
+ * @param args - list of command-line arguments
  *
  */
 class FilterReads(val args: List[String]) extends NGSApp with Logging {
@@ -47,13 +48,9 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
   def mainUsage = 
     "usage: java -jar NGSTools.jar -T FilterReads [-h/--help] -P/-PLATFORM [solid/illumina]"
   def mainVerboseUsage = 
-    "usage: java -jar NGSTools.jar -T FilterReads [-h/--help] -P/-PLATFORM [solid/illumina]"
-  var ct_map = scala.collection.mutable.Map[String, Int](
-  	"Total Reads"->0,
-        "Homopolymer"->0,
-        "Low Quality"->0,
-        "Missing Base"->0,
-        "Passed"->0)
+    "usage: java -jar NGSTools.jar -T FilterReads [-h/--help] -P/-PLATFORM [solid/illumina]\n" +
+    "Arguments:\n" + "\t-h/--help\tPrint this message.\n" + 
+    "\t-P/-PLATFORM\tChoose solid or illumina reads.\n"
 
   /**
    * @method parse - Parses the command line arguments and
@@ -63,53 +60,13 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
   private def parse = {
     val (userPlatform, otherArgs) = platform
     userPlatform match {
-      case "solid" => parseSolid(Map() ++ Map("platform"-> userPlatform), otherArgs)
+      case "solid" => solidFilters.main(otherArgs) 
+      //case "solid" => parseSolid(Map() ++ Map("platform"-> userPlatform), otherArgs)
       //case "illumina" => parseIllumina(Map() ++ Map("platform" -> platform), otherArgs)
       case option => log.warn("Error!! Unknown Platform; Must be 'illumina' or 'solid'"
          		     +option + "\n" + mainUsage); sys.exit(1)
     }
-  }  
-
-  /**
-   * @method parseSolid - Parses SOLiD arguments
-   * @param OptionMap
-   * @param a list of the arguments
-   * @return OptionMap
-   */
-  private def parseSolid(map: OptionMap, list: List[String]): OptionMap = {
-    list match {
-      case Nil => map
-      case "-I" :: file1 :: file2 :: tail =>
-        if (file2.startsWith("-")) {
-          log.warn(
-            "Error!! SOLiD reads: -I sequences.csfasta quality.fasta\n" +
-            "\tYou need two input files <sequences.csfasta> <quality.fasta>\n" +
-          mainUsage)
-          sys.exit(1)
-        }
-        else
-          parseSolid(
-            map ++ Map("incsfa"-> new File(file1)) ++ Map("incsq" -> new File(file2)), 
-            tail)
-      case "-O" :: file1 :: file2 :: tail =>
-        if (file2.startsWith("-")){
-          log.warn(mainUsage)
-          log.error(throw new IllegalArgumentException("Error!! SOLiD reads require 2 output files"));
-          sys.exit(1);
-        }
-        else
-          parseSolid(
-            map ++ Map("ocsfa"-> new File(file1)) ++ Map("ocsq" -> new File(file2)), 
-            tail)
-      case "-START" :: value :: tail => parseSolid(map ++ Map("start"->value.toInt), tail)
-      case "-END" :: value :: tail => parseSolid(map ++ Map("end"->value.toInt), tail)
-      case "-HPOLY" :: value :: tail => parseSolid(map ++ Map("hpoly"->value.toDouble), tail)
-      case "-MINQ" :: value :: tail => parseSolid(map ++ Map("minq"->value.toInt), tail)
-      case option => log.warn(mainUsage);
- 		     log.error(throw new IllegalArgumentException("Unknown Option "+option));
-		     sys.exit(1);
-    }
-  }
+  } 
 
   /**
    * @method platform - parses out the platform of the reads 
@@ -136,15 +93,14 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
    *
    */ 
   def run = {
-    val userOpts = this.parse
-    anyToString(userOpts("platform")) match {
-      case "solid" => processSolid(userOpts)
+    val (pltfrm, otherArgs) = this.platform 
+    pltfrm match {
+      case "solid" => solidFilters.main(otherArgs)
       //case "illumina" => processIllumina(userOpts)
       case option => log.warn(mainUsage);
-    		     log.error(throw new IllegalArgumentException("Unknown platform: [solid/illumina]"));
+    		     log.error(throw new IllegalArgumentException("Unknown platform "+option));
 		     sys.exit(1); 
     }
-    println(ct_map)
   } 
 
   private def processSolid(userOpts: OptionMap) = {
@@ -189,6 +145,4 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
     List(seqWriter, qualWriter, seqReader, seqWriter).map(ioInstance.closer(_)) 
   }
 
-
 }
-
