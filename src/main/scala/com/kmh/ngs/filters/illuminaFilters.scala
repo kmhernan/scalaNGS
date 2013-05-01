@@ -28,23 +28,18 @@
  */
 
 package com.kmh.ngs.filters
+
 import com.kmh.ngs.io.IoUtil
 import com.kmh.ngs.readers._
-import java.io.{File, OutputStreamWriter, BufferedReader}
+import java.io.{File, OutputStreamWriter, BufferedReader, IOException}
+import scala.collection.mutable.{Map, ListBuffer}
 import org.eintr.loglady.Logging
-import scala.collection.mutable
-
 
 /**
  * Filters Illumina reads
  *
  */
 object illuminaFilters extends Logging {
-  
-  /**
-   * Declare usage variables and count map
-   *
-   */
   type OptionMap = Map[String, Any]
   private var ct_map = 
     scala.collection.mutable.Map[String, Int](
@@ -61,7 +56,8 @@ object illuminaFilters extends Logging {
   private val mainVerboseUsage = mainUsage +
     "REQUIRED:\n" +
     "  -I/-INPUT\tInput raw read files: <file.fastq>|<file.fastq.gz>\n" +
-    "  -O/-OUTPUT\tOutput filtered read files: <file.fastq>\n\n" +
+    "  -O/-OUTPUT\tOutput filtered read files: <file.fastq>\n" +
+    "  -QV-OFFSET\tPhred-scaled offset [33, 64]\n\n" +
     "OPTIONAL (Automatically removed reads with missing bases):\n" +
     "  -START\t5' cut position (1-based index)\n" +
     "  -END\t3' cut position (1-based index)\n" +
@@ -72,19 +68,26 @@ object illuminaFilters extends Logging {
     "  -NMISSING\tLower limit for N's allowed.\n" + 
     "  -POLYA\tIf a read has trailing A's of length <input> * sequence length, trim them.\n" +
     "  -h/--help\tPrint this message and exit.\n"
-  private val required = List("infq", "outfq")
+  private val required = List("infq", "outfq", "offset")
   private val ioInstance = new IoUtil
+  private val filterFunctions = new ListBuffer[(FastqRecord, OptionMap) => Boolean]
+  private val basesArray = Array[String]("A", "C", "G", "T")
+  /** Convert [[Any]] into [[java.io.File]]*/
   def anyToFile(a: Any) = a.asInstanceOf[File]
+  /** Convert [[Any]] into [[String]]*/
   def anyToString(a: Any) = a.asInstanceOf[String]
+  /** Convert [[Any]] into [[Double]]*/
   def anyToDbl(a: Any) = a.asInstanceOf[Double]
+  /** Convert [[Any]] into [[Int]]*/
   def anyToInt(a: Any) = a.asInstanceOf[Int]
  
    /**
-   * @method parseIllumina - Parses Illumina arguments
-   * @param OptionMap
-   * @param a list of the arguments
-   * @return OptionMap
-   */
+     * Parses Illumina arguments
+     *
+     * @param OptionMap
+     * @param a list of the arguments
+     * @return OptionMap
+     */
   private def parseIllumina(map: OptionMap, list: List[String]): OptionMap = {
     list match {
       case Nil => checkRequired(map)
@@ -92,6 +95,7 @@ object illuminaFilters extends Logging {
       case "-INPUT" :: file1 :: tail => parseIllumina(map ++ Map("infq"-> new File(file1)), tail)
       case "-O" :: file1 :: tail => parseIllumina(map ++ Map("outfq"-> new File(file1)), tail)
       case "-OUTPUT" :: file1 :: tail => parseIllumina(map ++ Map("outfq"-> new File(file1)), tail)
+      case "-QV-OFFSET" :: value :: tail => parseIllumina(map ++ Map("offset"->value.toInt), tail)
       case "-START" :: value :: tail => parseIllumina(map ++ Map("start"->value.toInt), tail)
       case "-END" :: value :: tail => parseIllumina(map ++ Map("end"->value.toInt), tail)
       case "-HPOLY" :: value :: tail => parseIllumina(map ++ Map("hpoly"->value.toDouble), tail)
@@ -106,7 +110,14 @@ object illuminaFilters extends Logging {
     }
   } 
 
-  def checkRequired(map: OptionMap): OptionMap = {
+  /**
+    * Checks if all the required arguments are declared by the user.
+    *
+    * @param map the [[OptionMap]] of command-line arguments
+    * @return an [[OptionMap]] with all required arguments
+    * @throws [[IllegalArgumentException]]
+    */
+  private def checkRequired(map: OptionMap): OptionMap = {
     if (required.forall(x => map.isDefinedAt(x))) 
       map
     else { 
@@ -116,33 +127,71 @@ object illuminaFilters extends Logging {
     }
   }
 
-  /*private def parseFastq(
-	seqReader: BufferedReader,
-	seqFile: File,
-	start: Option[Int],
-	end: Option[Int],
-	polyA: Option[Double]): Iterator[FastqRecord] = {
-    try {*/
-       
+  def filterOptions(userOpts: OptionMap) = {
+    if (userOpts.isDefinedAt("minN"))
+      filterFunctions += isMissing
+    if (userOpts.isDefinedAt("hpoly"))
+      filterFunctions += isHomopolymer
+    if (userOpts.isDefinedAt("minq"))
+      filterFunctions += isLowQual
+  }
+
+  val isMissing = (rec: FastqRecord, userOpts: OptionMap) => {
+    if (rec.seqLine.count(_ == 'N') > anyToInt(userOpts("minN"))){
+      ct_map("Missing Base") += 1
+      true
+    } else false
+  }
+
+  val isLowQual = (rec: FastqRecord, userOpts: OptionMap) => {
+    if (rec.averageQuality(anyToInt(userOpts("minq"))) < anyToInt(userOpts("minq"))) {
+      ct_map("Low Quality") += 1
+      true
+    } else false
+  }
+
+  val isHomopolymer = (rec: FastqRecord, userOpts: OptionMap) => {
+    if (basesArray.map(_*(rec.seqLine.length*anyToDbl(userOpts("hpoly"))).toInt).forall(rec.seqLine.contains(_) == false))
+      false
+    else {
+      ct_map("Homopolymer") += 1
+      true
+    }
+  }
+
   def main(args: List[String]): Unit = {
     val userOpts = parseIllumina(Map(), args)
-    // Initialize IO
     val infq  = anyToFile(userOpts("infq"))
     val outfq = anyToFile(userOpts("outfq"))
     ioInstance.assertFileIsReadable(infq)
     val seqReader  = ioInstance.openFileForBufferedReading(infq)
-    /*val illuminaIter  = parseFastq(
-        seqReader, infq,
-        if (userOpts.isDefinedAt("start")) Some(anyToInt(userOpts("start"))) else None,
-        if (userOpts.isDefinedAt("end")) Some(anyToInt(userOpts("end"))) else None)*/
     val seqWriter = ioInstance.openFileForWriting(outfq)
 
     log.info("Processing Illumina reads...")
-    /*try
-      illuminaIter.foreach(x => processReads(x, seqWriter, qualWriter, seqReader, qualReader, userOpts))
-    catch { 
-      case _ : Throwable => List(seqReader, qualReader, seqWriter, qualWriter).map(ioInstance.closer(_))
-    }*/ 
+    try {
+      filterOptions(userOpts)
+      /*if(userOpts.isDefinedAt("polyA"))
+        val illuminaIter = parsePoly(seqReader, infq, userOpts)
+      else*/
+        val illuminaIter = FastqReader.parseFastq(
+        	seqReader, infq,
+        	if (userOpts.isDefinedAt("start")) Some(anyToInt(userOpts("start"))) else None,
+        	if (userOpts.isDefinedAt("end")) Some(anyToInt(userOpts("end"))) else None)
+      illuminaIter.foreach(x => {
+        ct_map("Total Reads") += 1
+        val results = filterFunctions.map(_(x, userOpts))
+        if (!results.contains(true)){
+          ct_map("Passed") += 1
+          x.writeToFile(seqWriter)}
+      }) 
+    }
+    catch {
+      case err: Throwable => List(seqReader, seqWriter).map(ioInstance.closer(_));
+	log.error("Something went wrong "+err); sys.exit(1);
+    } 
+    finally {
+      List(seqReader, seqWriter).map(ioInstance.closer(_))
+    }
     List(seqReader, seqWriter).map(ioInstance.closer(_))
     log.info("TOTAL="+ct_map("Total Reads")+" "+
              "MISSING="+ct_map("Missing Base")+" "+

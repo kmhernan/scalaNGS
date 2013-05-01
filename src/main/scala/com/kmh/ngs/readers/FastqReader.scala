@@ -29,7 +29,7 @@
 
 package com.kmh.ngs.readers
 import com.kmh.ngs.io
-import java.io.{File, BufferedReader, IOException}
+import java.io.{File, BufferedReader, IOException, OutputStreamWriter}
 import org.eintr.loglady.Logging
 
 /**
@@ -59,7 +59,11 @@ class FastqRecord(
   } 
     
   def barcode(): String = this.seqHeader.split(":").toList.reverse.head
-
+  
+  def writeToFile(ofq: OutputStreamWriter): Unit = {
+    ofq.write(this.seqHeader + "\n" + this.seqLine + "\n" + 
+              this.qualHeader + "\n" + this.qualLine + "\n")
+  }
 }
 
 /**
@@ -126,9 +130,9 @@ class FastqReader(
    */
   def trim(st: Option[Int], en: Option[Int], string: String): String = {
     (st, en) match {
-      case (Some(st), Some(en)) => string.slice(st-1, en + 1)
+      case (Some(st), Some(en)) => string.slice(st-1, en)
       case (Some(st), None) => string.slice(st-1, string.length)
-      case (None, Some(en)) => string.slice(0, en + 1)
+      case (None, Some(en)) => string.slice(0, en)
       case (None, None) => string
     }
   }

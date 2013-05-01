@@ -32,9 +32,10 @@ package com.kmh.ngs.io
 import java.io._
 import java.util.zip.GZIPInputStream
 import org.eintr.loglady.Logging
+import scala.io.BufferedSource
 
 /**
- * A class for utility IO methods around java.io
+ * A class for utility IO methods around [[java.io._]] or [[scala.io.BufferedSource]]
  *
  * @author Kyle Hernandez
  */
@@ -56,7 +57,8 @@ class IoUtil extends Logging {
    * the file can't be opened.
    * 
    * @param file the file to open
-   * @returns InputStream
+   * @return InputStream
+   * @throws [[IOException]]
    */
   def openFileForReading(file: File): InputStream = {
     try {
@@ -75,7 +77,8 @@ class IoUtil extends Logging {
    * Opens a GZ file. Throws an exception when it can't open.
    *
    * @param file the gz file
-   * @returns GZIPInputStream
+   * @return GZIPInputStream
+   * @throws [[IOException]]
    */
   def openGzipFileForReading(file: File): GZIPInputStream = {
     try
@@ -87,11 +90,49 @@ class IoUtil extends Logging {
   }
 
   /**
+   * Opens a file for [[scala.io.BufferedSource]] reading. Currently supports .gz files. Throws exceptions when
+   * the file can't be opened.
+   * 
+   * @param file the [[java.io.File]] to open
+   * @return [[scala.io.BufferedSource]]
+   * @throws [[IOException]]
+   */
+  def openFileForBufferedSource(file: File): BufferedSource = {
+    try {
+      if(file.getName().endsWith(".gz")){
+        openGzipFileForBufferedSource(file)
+      } else
+        new BufferedSource(new FileInputStream(file))
+    }
+    catch {
+      case ioe: IOException => log.error("Error opening file: " + file.getName() + " " + ioe); sys.exit(1);
+      case e: Throwable => log.error("Unhandled Exception!\n" + e.printStackTrace()); sys.exit(1);
+    } 
+  }
+
+  /**
+   * Opens a GZ file. Throws an exception when it can't open.
+   *
+   * @param file the gz file
+   * @return [[scala.io.BufferedSource]] 
+   * @throws [[IOException]]
+   */
+  def openGzipFileForBufferedSource(file: File): BufferedSource = {
+    try
+      new BufferedSource(new GZIPInputStream(new FileInputStream(file)))
+    catch {
+      case ioe: IOException => log.error("Error opening file: " + file.getName() + " " + ioe); sys.exit(1);
+      case e: Throwable => log.error("Unhandled Exception!\n" + e.printStackTrace()); sys.exit(1);
+    } 
+  }
+
+  /**
    * Opens a file for writing. Throw exception if unable to open stream.
    * Curerntly doesn't support zipped files.
    *
    * @param file the file to output to
-   * @returns OutputStreamWriter
+   * @return OutputStreamWriter
+   * @throws [[IOException]]
    */
   def openFileForWriting(file: File): OutputStreamWriter = {
     try
@@ -106,7 +147,7 @@ class IoUtil extends Logging {
    * Opens a Buffered reader
    *
    * @param file the file to create a BufferedReader from
-   * @returns BufferedReader
+   * @return BufferedReader
    */
   def openFileForBufferedReading(file: File): BufferedReader = {
     new BufferedReader(new InputStreamReader(openFileForReading(file)))
@@ -124,4 +165,7 @@ class IoUtil extends Logging {
       stream.close()
   }
 
+  def closerSource(stream: BufferedSource): Unit = {
+      stream.close()
+  }
 }

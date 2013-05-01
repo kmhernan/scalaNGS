@@ -71,7 +71,7 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
   } 
 
   /**
-   * The main function for filtering reads 
+   * The main function for filtering reads. 
    * 
    * @throws [[IllegalArgumentException]]
    */ 

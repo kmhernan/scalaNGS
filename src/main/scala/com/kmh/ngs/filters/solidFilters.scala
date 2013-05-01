@@ -28,11 +28,12 @@
  */
 
 package com.kmh.ngs.filters
+
 import com.kmh.ngs.readers._
-import scala.collection.mutable.{Map, ListBuffer}
-import org.eintr.loglady.Logging
 import com.kmh.ngs.io.IoUtil
 import java.io.{File, OutputStreamWriter, BufferedReader}
+import org.eintr.loglady.Logging
+import scala.collection.mutable.{Map, ListBuffer}
 
 /** Filters SOLiD reads. */
 object solidFilters extends Logging {
@@ -61,9 +62,15 @@ object solidFilters extends Logging {
     "  -h/--help\tPrint this message and exit.\n"
   private val required = List("incsfa", "incsq", "ocsfa", "ocsq")
   private val ioInstance = new IoUtil
+  private val filterFunctions = new ListBuffer[(CSFastaRecord, OptionMap) => Boolean]
+
+  /** Convert [[Any]] into [[java.io.File]]*/
   def anyToFile(a: Any) = a.asInstanceOf[File]
+  /** Convert [[Any]] into [[String]]*/
   def anyToString(a: Any) = a.asInstanceOf[String]
+  /** Convert [[Any]] into [[Double]]*/
   def anyToDbl(a: Any) = a.asInstanceOf[Double]
+  /** Convert [[Any]] into [[Int]]*/
   def anyToInt(a: Any) = a.asInstanceOf[Int]
  
    /**
@@ -140,17 +147,22 @@ object solidFilters extends Logging {
     }
   } 
 
+  /**
+    * Checks if all the required arguments are declared by the user.
+    *
+    * @param map the [[OptionMap]] of command-line arguments
+    * @return an [[OptionMap]] with all required arguments
+    * @throws [[IllegalArgumentException]]
+    */
   def checkRequired(map: OptionMap): OptionMap = {
-    if (required.forall(x => map.isDefinedAt(x))) 
+    if (required.forall(x => map.isDefinedAt(x)))
       map
     else { 
       log.warn(mainUsage)
-      log.error(throw new Exception("Two input and output files required for SOLiD reads!!"))
+      log.error(throw new IllegalArgumentException("Mising Required Arguments!!"))
       sys.exit(1)
     }
   }
-
-  val filterFunctions = new ListBuffer[(CSFastaRecord, OptionMap) => Boolean]
 
   def filterOptions(userOpts: OptionMap) = {
     if (userOpts.isDefinedAt("missing"))
@@ -200,10 +212,7 @@ object solidFilters extends Logging {
     val seqWriter = ioInstance.openFileForWriting(outfa)
     val qualWriter = ioInstance.openFileForWriting(outq)
 
-    /**
-     * Run the filters based on user inputs
-     *
-     */
+    /** Run the filters based on user inputs */
     log.info("Processing SOLiD reads...")
     try {
       filterOptions(userOpts)

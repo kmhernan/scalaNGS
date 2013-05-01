@@ -53,18 +53,6 @@ class CSFastaRecord(
   }
 
   /**
-   * Tests whether the current read is a homopolymer based on user cutoff
-   * @param polyLimit - the cutoff length to consider homopolymer, represented as a proportion of
-			total read length
-   * @return true if is a homopolymer else false
-   *
-   */
-  def isHomopolymer(polyLimit: Double) = {
-    val string = "0" * (this.seqLine.length * polyLimit).toInt
-    if (this.seqLine.contains(string)) true else false
-  } 
- 
-  /**
    * Writes the current record to a file
    * @param ofa - file for csfasta reads
    * @param oq - file for quals
