@@ -35,15 +35,12 @@ import org.eintr.loglady.Logging
 import scala.collection.mutable
 
 /**
- * @class FilterReads - Filters NGS reads based on user inputs 
- * @param args - list of command-line arguments
- *
+ * Filters NGS reads based on user inputs 
+ * 
+ * @constructor create FilterReads [[com.kmh.ngs.tools.NGSApp]] with user-given command-line arguments
+ * @param args the list of commands-line arguments
  */
 class FilterReads(val args: List[String]) extends NGSApp with Logging {
-  /**
-   * Inititalize the variables associated with this 
-   * tool. 
-   */
   def toolName = "'%s'".format(this.getClass()) 
   def description = "Filters NGS reads based on user inputs."
   def mainUsage = 
@@ -54,10 +51,11 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
     "\t-P/-PLATFORM\tChoose solid or illumina reads.\n"
 
   /**
-   * @method platform - parses out the platform of the reads 
+   * Parses out the platform of the reads 
+   *
+   * @throws [[IllegalArgumentException]]
    * @return platform of the reads
    * @return list of the remaining args
-   *
    */
   private def platform : (String, List[String])={
     this.args match {
@@ -73,8 +71,9 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
   } 
 
   /**
-   * @method run - the main function for filtering reads 
-   *
+   * The main function for filtering reads 
+   * 
+   * @throws [[IllegalArgumentException]]
    */ 
   def run = {
     val (pltfrm, otherArgs) = this.platform 

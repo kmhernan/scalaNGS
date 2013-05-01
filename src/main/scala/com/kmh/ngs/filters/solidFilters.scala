@@ -34,16 +34,8 @@ import org.eintr.loglady.Logging
 import com.kmh.ngs.io.IoUtil
 import java.io.{File, OutputStreamWriter, BufferedReader}
 
-/**
- * Filters SOLiD reads
- *
- */
+/** Filters SOLiD reads. */
 object solidFilters extends Logging {
-  
-  /**
-   * Declare usage variables and count map
-   *
-   */
   type OptionMap = Map[String, Any]
   private var ct_map = 
     scala.collection.mutable.Map[String, Int](
@@ -76,10 +68,11 @@ object solidFilters extends Logging {
  
    /**
    * Parses SOLiD arguments
-   * @param OptionMap
-   * @param a list of the arguments
-   * @return OptionMap
    *
+   * @param [[OptionMap]] of user arguments
+   * @param a list of the arguments
+   * @return Finalized [[OptionMap]] of user arguments
+   * @throws [[IllegalArgumentException]]
    */
   private def parseSolid(map: OptionMap, list: List[String]): OptionMap = {
     list match {

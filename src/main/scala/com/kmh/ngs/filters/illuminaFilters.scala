@@ -116,13 +116,13 @@ object illuminaFilters extends Logging {
     }
   }
 
-  private def parseFastq(
+  /*private def parseFastq(
 	seqReader: BufferedReader,
 	seqFile: File,
 	start: Option[Int],
 	end: Option[Int],
 	polyA: Option[Double]): Iterator[FastqRecord] = {
-    try {
+    try {*/
        
   def main(args: List[String]): Unit = {
     val userOpts = parseIllumina(Map(), args)
@@ -131,10 +131,10 @@ object illuminaFilters extends Logging {
     val outfq = anyToFile(userOpts("outfq"))
     ioInstance.assertFileIsReadable(infq)
     val seqReader  = ioInstance.openFileForBufferedReading(infq)
-    val illuminaIter  = parseFastq(
+    /*val illuminaIter  = parseFastq(
         seqReader, infq,
         if (userOpts.isDefinedAt("start")) Some(anyToInt(userOpts("start"))) else None,
-        if (userOpts.isDefinedAt("end")) Some(anyToInt(userOpts("end"))) else None)
+        if (userOpts.isDefinedAt("end")) Some(anyToInt(userOpts("end"))) else None)*/
     val seqWriter = ioInstance.openFileForWriting(outfq)
 
     log.info("Processing Illumina reads...")
