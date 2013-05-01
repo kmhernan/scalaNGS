@@ -28,10 +28,11 @@
  */
 
 package com.kmh.ngs.tools
-import scala.collection.mutable
-import java.io.File
 import com.kmh.ngs.readers._
+import com.kmh.ngs.filters._
+import java.io.File
 import org.eintr.loglady.Logging
+import scala.collection.mutable
 
 /**
  * @class FilterReads - Filters NGS reads based on user inputs 
@@ -53,22 +54,6 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
     "\t-P/-PLATFORM\tChoose solid or illumina reads.\n"
 
   /**
-   * @method parse - Parses the command line arguments and
-   * send them to their respective methods
-   *
-   */
-  private def parse = {
-    val (userPlatform, otherArgs) = platform
-    userPlatform match {
-      case "solid" => solidFilters.main(otherArgs) 
-      //case "solid" => parseSolid(Map() ++ Map("platform"-> userPlatform), otherArgs)
-      //case "illumina" => parseIllumina(Map() ++ Map("platform" -> platform), otherArgs)
-      case option => log.warn("Error!! Unknown Platform; Must be 'illumina' or 'solid'"
-         		     +option + "\n" + mainUsage); sys.exit(1)
-    }
-  } 
-
-  /**
    * @method platform - parses out the platform of the reads 
    * @return platform of the reads
    * @return list of the remaining args
@@ -79,15 +64,14 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
       case Nil => log.warn("Please select a platform\n" + mainUsage); sys.exit(1)
       case "-h" :: tail => log.info(mainVerboseUsage); sys.exit(0)
       case "-P" :: value :: tail => (value, tail)
-      case option :: tail => log.warn(mainUsage);
-			     log.error(
- 			       throw new IllegalArgumentException("Unknown Option; Must specify platform first"));
-                             sys.exit(1);
+      case option :: tail => 
+        log.warn(mainUsage);
+	log.error(throw new IllegalArgumentException(
+          "Unknown Option; Must specify platform first"));
+          sys.exit(1);
     }
   } 
 
-  //private def parseIllumina(list: List[String]):
- 
   /**
    * @method run - the main function for filtering reads 
    *
@@ -96,53 +80,12 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
     val (pltfrm, otherArgs) = this.platform 
     pltfrm match {
       case "solid" => solidFilters.main(otherArgs)
-      //case "illumina" => processIllumina(userOpts)
-      case option => log.warn(mainUsage);
-    		     log.error(throw new IllegalArgumentException("Unknown platform "+option));
-		     sys.exit(1); 
+      case "illumina" => illuminaFilters.main(otherArgs)
+      case option => 
+        log.warn(mainUsage);
+    	log.error(throw new IllegalArgumentException("Unknown platform "+option));
+	sys.exit(1); 
     }
   } 
-
-  private def processSolid(userOpts: OptionMap) = {
-    log.info("Processing SOLiD reads...")
-    // Initialize IO
-    val infa  = anyToFile(userOpts("incsfa"))
-    val inq   = anyToFile(userOpts("incsq"))
-    val outfa = anyToFile(userOpts("ocsfa"))
-    val outq  = anyToFile(userOpts("ocsq"))
-    List(infa, inq).map(ioInstance.assertFileIsReadable(_))
-    val seqReader  = ioInstance.openFileForBufferedReading(infa)
-    val qualReader = ioInstance.openFileForBufferedReading(inq)
-    val solidIter  = CSFastaReader.parseCSFasta(
-	seqReader, qualReader, infa, inq, 
-	if (userOpts.isDefinedAt("start")) Some(anyToInt(userOpts("start"))) else None, 
-	if (userOpts.isDefinedAt("end")) Some(anyToInt(userOpts("end"))) else None)
-    val seqWriter = ioInstance.openFileForWriting(outfa)
-    val qualWriter = ioInstance.openFileForWriting(outq)
-    // Run filters
-    try {
-      for (rec <- solidIter){
-        ct_map("Total Reads") += 1
-        // check for N's
-        if (rec.seqLine.contains("."))
-          ct_map("Missing Base") += 1
-        else {
-          if (rec.averageQuality < anyToInt(userOpts("minq"))) 
-            ct_map("Low Quality") += 1
-          else {
-            if (rec.isHomopolymer(anyToDbl(userOpts("hpoly"))))
-              ct_map("Homopolymer") += 1
-            else {
-              ct_map("Passed") += 1
-              rec.writeToFile(seqWriter, qualWriter)
-            } 
-          } 
-        } 
-      } 
-    } finally {
-    	List(seqWriter, qualWriter, seqReader, seqWriter).map(ioInstance.closer(_)) 
-    }
-    List(seqWriter, qualWriter, seqReader, seqWriter).map(ioInstance.closer(_)) 
-  }
 
 }

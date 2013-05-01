@@ -27,9 +27,10 @@
  *
  */
 
-package com.kmh.ngs.fastq
+package com.kmh.ngs.readers
 import com.kmh.ngs.io
 import java.io.{File, BufferedReader, IOException}
+import org.eintr.loglady.Logging
 
 /**
  * Represents a literal Fastq record 
@@ -67,7 +68,11 @@ class FastqRecord(
  * @param reader instance of BufferedReader
  * @param file the file from which the buffer was created
  */
-class FastqReader(val reader: BufferedReader, val file: File) {
+class FastqReader(
+	val reader: BufferedReader, 
+	val file: File,
+	val start: Option[Int],
+	val end: Option[Int]) extends Logging {
   var nextRecord: FastqRecord = readNextRecord
 
   def readNextRecord: FastqRecord = {
@@ -76,29 +81,30 @@ class FastqReader(val reader: BufferedReader, val file: File) {
       val seqHeader: String = reader.readLine()
       if (seqHeader == null) return null
       if (seqHeader.isEmpty)
-        throw new RuntimeException("Missing sequence header")
+        log.error(throw new RuntimeException("Missing sequence header"))
       if (!seqHeader.startsWith("@"))
-        throw new RuntimeException("Invalid sequence header type")
+        log.error(throw new RuntimeException("Invalid sequence header type"))
       
       // Sequence
-      val seqLine: String = reader.readLine()
+      val seqLine: String = trim(start, end, reader.readLine())
 
       // Quality Header
       val qualHeader: String = reader.readLine()
       if (!qualHeader.startsWith("+"))
-        throw new RuntimeException("Invalid quality header type")
+        log.error(throw new RuntimeException("Invalid quality header type"))
 
       // Quality
-      val qualLine: String = reader.readLine()
+      val qualLine: String = trim(start, end, reader.readLine())
 
       // Check if sequence and quality are same lengths
       if (seqLine.length != qualLine.length)
-        throw new RuntimeException("Sequence length must match quality length")
-     
+        log.error(throw new RuntimeException("Sequence length must match quality length"))
+    
+      // Create instance of FastqRecord 
       new FastqRecord(seqHeader, seqLine, qualHeader, qualLine)
     }
     catch {
-      case ioe: IOException => println(String.format("Error reading fastq '%s' '%s'", file.getName(), ioe)); 
+      case ioe: IOException => log.error("Error reading fastq '%s' '%s'".format(file.getName(), ioe)); 
                                reader.close(); sys.exit(1);
     }
   }
@@ -111,22 +117,36 @@ class FastqReader(val reader: BufferedReader, val file: File) {
     return rec
   }
 
-}
-
-/**
- * Companion object for FastqReader class
- *
- */
-object FastqReader {
-
-  def parseFastq(file: File): Iterator[FastqRecord] = {
-    val rd = new com.kmh.ngs.io.IoUtil
-    val reader = rd.openFileForBufferedReading(file)
-    val FQ = new FastqReader(reader, file)
-    val it = Iterator.continually { FQ.next }
-    try {
-      for (rec <- it.takeWhile(_ != null)) yield { rec }
+  /**
+   * Trims sequence and qual based on user-input
+   * @param st - Optional start position (1-based index).
+   * @param en - Optional end position (1-based index).
+   * @param string - Either quality or sequence to trim.
+   *
+   */
+  def trim(st: Option[Int], en: Option[Int], string: String): String = {
+    (st, en) match {
+      case (Some(st), Some(en)) => string.slice(st-1, en + 1)
+      case (Some(st), None) => string.slice(st-1, string.length)
+      case (None, Some(en)) => string.slice(0, en + 1)
+      case (None, None) => string
     }
   }
 
+}
+
+/**
+ * Object for reading fastq files 
+ *
+ */
+object FastqReader {
+  def parseFastq(
+        seqReader: BufferedReader,
+        seqFile: File,
+        start: Option[Int],
+        end: Option[Int]): Iterator[FastqRecord] = {
+    val FQ = new FastqReader(seqReader, seqFile, start, end)
+    val it = Iterator.continually { FQ.next }
+    for (rec <- it.takeWhile(_ != null)) yield { rec }
+  }
 }

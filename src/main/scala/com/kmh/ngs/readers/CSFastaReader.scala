@@ -30,6 +30,7 @@
 package com.kmh.ngs
 package readers
 import java.io.{File, OutputStreamWriter, BufferedReader, IOException}
+import org.eintr.loglady.Logging
 import scala.collection.mutable.ListBuffer
 
 /** 
@@ -43,7 +44,7 @@ class CSFastaRecord(
 	val qualLine: String) {
 
   /**
-   * @method averageQuality - returns the average quality of the current record
+   * Returns the average quality of the current record
    * @return the average quality of the read.
    */
   def averageQuality: Double = {
@@ -52,7 +53,7 @@ class CSFastaRecord(
   }
 
   /**
-   * @method isHomopolyer - tests whether the current read is a homopolymer based on user cutoff
+   * Tests whether the current read is a homopolymer based on user cutoff
    * @param polyLimit - the cutoff length to consider homopolymer, represented as a proportion of
 			total read length
    * @return true if is a homopolymer else false
@@ -64,7 +65,7 @@ class CSFastaRecord(
   } 
  
   /**
-   * @method writeToFile - writes the current record to a file
+   * Writes the current record to a file
    * @param ofa - file for csfasta reads
    * @param oq - file for quals
    *
@@ -79,7 +80,7 @@ class CSFastaRecord(
 }
 
 /**
- * @class CSFastaReader - reader class for CSFasta files 
+ * Reader class for CSFasta files 
  * @param seqReader - input stream for a csfasta file
  * @param qualReader - input stream for a qual file
  * @param seqFile - input csfasta file
@@ -94,11 +95,11 @@ class CSFastaReader(
 	val seqFile: File,
 	val qualFile: File,
         val start: Option[Int],
-        val end: Option[Int]) {
+        val end: Option[Int]) extends Logging {
   var nextRecord: CSFastaRecord = readNextRecord
 
   /**
-   * @method readNextRecord - Reads next record from files 
+   * Reads next record from files 
    * 
    */
   def readNextRecord: CSFastaRecord = {
@@ -107,31 +108,29 @@ class CSFastaReader(
       val seqHeader: String = seqReader.readLine()
       if (seqHeader == null) return null
       if (seqHeader.isEmpty)
-        throw new RuntimeException("Missing sequence header")
+        log.error(throw new RuntimeException("Missing sequence header"))
       if (!seqHeader.startsWith(">"))
-        throw new RuntimeException("Invalid sequence header type: Excepted '>'")
+        log.error(throw new RuntimeException("Invalid sequence header type: Excepted '>'"))
+
+      // Sequence
+      val seqLine: String = trimSeq(start, end, seqReader.readLine())
+
       // Qual Name 
       val qualHeader: String = qualReader.readLine()
       if (qualHeader != seqHeader)
-        throw new RuntimeException(
-          "Read quality header != read sequence header:\n%s\n%s".format(seqHeader, qualHeader))
+        log.error(throw new RuntimeException(
+          "Read quality header != read sequence header:\n%s\n%s".format(seqHeader, qualHeader)))
       if (!qualHeader.startsWith(">"))
-        throw new RuntimeException("Invalid quality header type: Expected '>'")
-      
-      // Sequence
-      val seqLine: String = seqReader.readLine()
+        log.error(throw new RuntimeException("Invalid quality header type: Expected '>'"))
      
       // Quality
-      val qualLine: String = qualReader.readLine()
+      val qualLine: String = trimQ(start, end, qualReader.readLine())
 
-      // Trim if necessary
-      val trSeq = trimSeq(start, end, seqLine)
-      val trQual = trimQ(start, end, qualLine)
- 
-      new CSFastaRecord(seqHeader, trSeq, qualHeader, trQual)
+      // Create new CSFastaRecord
+      new CSFastaRecord(seqHeader, seqLine, qualHeader, qualLine)
     }
     catch {
-      case ioe: IOException => println(
+      case ioe: IOException => log.error(
 	"Error reading csfasta and quality '%s' '%s'".format(
 		seqFile.getName(), qualFile.getName(), ioe));
     	seqReader.close();
@@ -141,45 +140,19 @@ class CSFastaReader(
   }
 
   /**
-   * @method hasNext - Checks if there is a next record
+   * Checks if there is a next record
    *
    */
   def hasNext: Boolean = { nextRecord != null }
 
   /**
-   * @method next - Returns next record
+   * Returns next record
    *
    */ 
   def next: CSFastaRecord = {
     val rec = nextRecord
     nextRecord = readNextRecord
     return rec
-  }
-
-  /**
-   * @method trimSeq - Trims sequence based on user-input
-   *
-   */
-  def trimSeq(st: Option[Int], en: Option[Int], string: String): String = {
-    (st, en) match {
-      case (Some(st), Some(en)) => 
-	if (st == 1)
-     	  string.slice(st-1, en + 1)
-        else {
-  	  val adaptBase = csToBS(string, st)
-          adaptBase + string.slice(st, en + 1)
-	}
-      case (Some(st), None) =>
-	if (st == 1)
-	  string 
-     	else {
- 	  val adaptBase = csToBS(string, st) 
-	  adaptBase + string.slice(st, string.length)
-	}
-      case (None, Some(en)) =>
-	string.slice(0, string.length - en)
-      case (None, None) => string
-    }
   }
 
   /**
@@ -207,11 +180,40 @@ class CSFastaReader(
       }
     }
     catch {
-      case npe: NullPointerException => println("You didn't initialize the array" + npe)
+      case npe: NullPointerException => log.error("You didn't initialize the array" + npe)
       case nse: NoSuchElementException => return '.' 
-      case iob: IndexOutOfBoundsException => println(" "+iob) 
+      case iob: IndexOutOfBoundsException => log.error("Error, not in bounds of ListBuffer "+iob) 
     }
     bsArr.last
+  }
+
+  /**
+   * Trims CS sequence based on user-input
+   * @param st - Optional start position (1-based)
+   * @param en - Optional end position (1-based)
+   * @param string - Sequence to trim
+   *
+   */
+  def trimSeq(st: Option[Int], en: Option[Int], string: String): String = {
+    (st, en) match {
+      case (Some(st), Some(en)) => 
+	if (st == 1)
+     	  string.slice(st-1, en + 1)
+        else {
+  	  val adaptBase = csToBS(string, st)
+          adaptBase + string.slice(st, en + 1)
+	}
+      case (Some(st), None) =>
+	if (st == 1)
+	  string 
+     	else {
+ 	  val adaptBase = csToBS(string, st) 
+	  adaptBase + string.slice(st, string.length)
+	}
+      case (None, Some(en)) =>
+	string.slice(0, string.length - en)
+      case (None, None) => string
+    }
   }
 
   /**

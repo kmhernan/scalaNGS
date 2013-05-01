@@ -1,5 +1,4 @@
 package com.kmh.ngs.tools
-import com.kmh.ngs.io._
 import java.io.File
 
 /**
@@ -7,14 +6,6 @@ import java.io.File
  *
  */
 abstract class NGSApp {
-  type OptionMap = Map[String, Any]
-  protected val ioInstance = new IoUtil
-
-  def anyToFile(a: Any) = a.asInstanceOf[File]
-  def anyToString(a: Any) = a.asInstanceOf[String]
-  def anyToDbl(a: Any) = a.asInstanceOf[Double]
-  def anyToInt(a: Any) = a.asInstanceOf[Int]
-
   protected def description: String
   protected def mainUsage: String
   protected def mainVerboseUsage: String
