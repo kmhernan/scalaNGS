@@ -49,32 +49,33 @@ object illuminaFilters extends Logging {
         "Low Quality"->0,
         "Missing Base"->0,
         "Passed"->0)
-  private def mainUsage = println(
-    "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM illumina -I/-INPUT file.fastq\n" +
-    "-O/-OUTPUT file.fastq [-START Int] [-END Int] [-HPOLY Double] [-MINQ Int] [-NMISSING Int]\n" +
-    "[-POLYA Double] [-h/--help]\n")
+  private val SP = " "*( "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM illumina ".length)
+  private def mainUsage = List(
+    "\nusage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM illumina -I/-INPUT file.fastq -O/-OUTPUT file.fastq -QV-OFFSET",
+    SP + "[-START Int] [-END Int] [-HPOLY Double] [-MINQ Int] [-NMISSING Int]",
+    SP + "[-POLYA Double] [-h/--help]\n").map(println(_))
   private def mainVerboseUsage = {
     mainUsage
-    println(
-    "REQUIRED:\n" +
-    "  -I/-INPUT\tInput raw read files: <file.fastq>|<file.fastq.gz>\n" +
-    "  -O/-OUTPUT\tOutput filtered read files: <file.fastq>\n" +
-    "  -QV-OFFSET\tPhred-scaled offset [33, 64]\n\n" +
-    "OPTIONAL (Automatically removed reads with missing bases):\n" +
-    "  -START\t5' cut position (1-based index)\n" +
-    "  -END\t3' cut position (1-based index)\n" +
-    "      \tex. AlfI: -START 1 -END 36\n" +
-    "  -HPOLY\tRelative length of repetitive base to consider a homopolymer.\n" +
-    "        \t(Proportion of read length; e.g., between 0 and 1)\n" +
-    "  -MINQ\tMinimum average quality score allowed.\n" +
-    "  -NMISSING\tLower limit for N's allowed.\n" + 
-    "  -POLYA\tIf a read has trailing A's of length <input> * sequence length, trim them.\n" +
-    "  -h/--help\tPrint this message and exit.\n")
+    List("Required Arguments:",
+      "  -I/-INPUT\tInput raw read files: <file.fastq> or <file.fastq.gz>",
+      "  -O/-OUTPUT\tOutput filtered read files: <file.fastq>",
+      "  -QV-OFFSET\tPhred-scaled offset [33, 64]\n").map(println(_))
+    List("Optional Arguments:",
+      "  -START\t5' cut position (1-based index)",
+      "  -END\t\t3' cut position (1-based index)",
+      "      \t\tex. AlfI: -START 1 -END 36",
+      "  -HPOLY\tRelative length of repetitive base to consider a homopolymer.",
+      "        \t(Proportion of read length; e.g., between 0 and 1)",
+      "  -MINQ\t\tMinimum average quality score allowed.",
+      "  -NMISSING\tLower limit for N's allowed.", 
+      "  -POLYA\tIf a read has trailing A's of length <input> * sequence length, trim them.",
+      "  -h/--help\tPrint this message and exit.\n").map(println(_))
   }
   private val required = List("infq", "outfq", "offset")
   private val ioInstance = new IoUtil
   private val filterFunctions = new ListBuffer[((FastqRecord, OptionMap)) => Boolean]
   private val basesArray = Array[String]("A", "C", "G", "T")
+
   /** Convert [[Any]] into [[java.io.File]]*/
   def anyToFile(a: Any) = a.asInstanceOf[File]
   /** Convert [[Any]] into [[String]]*/
@@ -85,7 +86,7 @@ object illuminaFilters extends Logging {
   def anyToInt(a: Any) = a.asInstanceOf[Int]
  
    /**
-     * Parses Illumina arguments
+     * Parses Illumina command-line arguments
      *
      * @param OptionMap
      * @param a list of the arguments
@@ -94,10 +95,10 @@ object illuminaFilters extends Logging {
   private def parseIllumina(map: OptionMap, list: List[String]): OptionMap = {
     list match {
       case Nil => checkRequired(map)
-      case "-I" :: file1 :: tail => parseIllumina(map ++ Map("infq"-> new File(file1)), tail)
-      case "-INPUT" :: file1 :: tail => parseIllumina(map ++ Map("infq"-> new File(file1)), tail)
-      case "-O" :: file1 :: tail => parseIllumina(map ++ Map("outfq"-> new File(file1)), tail)
-      case "-OUTPUT" :: file1 :: tail => parseIllumina(map ++ Map("outfq"-> new File(file1)), tail)
+      case "-I" :: file :: tail => parseIllumina(map ++ Map("infq"-> new File(file)), tail)
+      case "-INPUT" :: file :: tail => parseIllumina(map ++ Map("infq"-> new File(file)), tail)
+      case "-O" :: file :: tail => parseIllumina(map ++ Map("outfq"-> new File(file)), tail)
+      case "-OUTPUT" :: file :: tail => parseIllumina(map ++ Map("outfq"-> new File(file)), tail)
       case "-QV-OFFSET" :: value :: tail => parseIllumina(map ++ Map("offset"->value.toInt), tail)
       case "-START" :: value :: tail => parseIllumina(map ++ Map("start"->value.toInt), tail)
       case "-END" :: value :: tail => parseIllumina(map ++ Map("end"->value.toInt), tail)
@@ -105,8 +106,8 @@ object illuminaFilters extends Logging {
       case "-MINQ" :: value :: tail => parseIllumina(map ++ Map("minq"->value.toInt), tail)
       case "-NMISSING" :: value :: tail => parseIllumina(map ++ Map("minN"->value.toInt), tail)
       case "-POLYA" :: value :: tail => parseIllumina(map ++ Map("polyA"->value.toDouble), tail)
-      case "-h" :: value :: tail => mainVerboseUsage; sys.exit(0);
-      case "--help" :: value :: tail => mainVerboseUsage; sys.exit(0);
+      case "-h" :: tail => mainVerboseUsage; sys.exit(0)
+      case "--help" :: tail => mainVerboseUsage; sys.exit(0)
       case option => mainUsage;
                      log.error(throw new IllegalArgumentException("Unknown Option "+option));
                      sys.exit(1);
@@ -121,9 +122,13 @@ object illuminaFilters extends Logging {
     * @throws [[IllegalArgumentException]]
     */
   private def checkRequired(map: OptionMap): OptionMap = {
-    if (required.forall(x => map.isDefinedAt(x))) 
+    if (map.isEmpty){
+      mainUsage
+      sys.exit(0)
+    }
+    else if (required.forall(x => map.isDefinedAt(x))) 
       map
-    else { 
+    else {
       mainUsage
       log.error(throw new IllegalArgumentException("Missing Required Arguments!!"))
       sys.exit(1)
@@ -153,7 +158,7 @@ object illuminaFilters extends Logging {
   }
 
   def isLowQual(rec: FastqRecord, userOpts: OptionMap) = {
-    if (rec.averageQuality(anyToInt(userOpts("minq"))) < anyToInt(userOpts("minq"))) {
+    if (rec.averageQuality(anyToInt(userOpts("offset"))) < anyToInt(userOpts("minq"))) {
       ct_map("Low Quality") += 1
       true
     } else false
@@ -179,7 +184,7 @@ object illuminaFilters extends Logging {
     log.info("Processing Illumina reads...")
     try {
       filterOptions(userOpts)
-      val filtList = filterFunctions.toList
+      val filterList = filterFunctions.toList
 
       //if(userOpts.isDefinedAt("polyA"))
       //  val illuminaIter = parsePoly(seqReader, infq, userOpts)
@@ -191,7 +196,7 @@ object illuminaFilters extends Logging {
 
       illuminaIter.foreach(x => {
         ct_map("Total Reads") += 1
-        filtList.find(_((x,userOpts)) == true) match {
+        filterList.find(_((x,userOpts)) == true) match {
           case None => ct_map("Passed") +=1; x.writeToFile(seqWriter)
           case Some(_) => null 
           }
@@ -205,7 +210,8 @@ object illuminaFilters extends Logging {
       List(seqReader, seqWriter).map(ioInstance.closer(_))
     }
     List(seqReader, seqWriter).map(ioInstance.closer(_))
-    log.info("TOTAL="+ct_map("Total Reads")+" "+
+    log.info("FILE="+infq.getName()+" "+
+             "TOTAL="+ct_map("Total Reads")+" "+
              "MISSING="+ct_map("Missing Base")+" "+
              "LOWQ="+ct_map("Low Quality")+" "+
              "HOMOPOLYMER="+ct_map("Homopolymer")+" "+

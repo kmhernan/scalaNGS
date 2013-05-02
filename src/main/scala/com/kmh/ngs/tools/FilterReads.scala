@@ -43,12 +43,15 @@ import scala.collection.mutable
 class FilterReads(val args: List[String]) extends NGSApp with Logging {
   def toolName = "'%s'".format(this.getClass()) 
   def description = "Filters NGS reads based on user inputs."
-  def mainUsage = 
-    "usage: java -jar NGSTools.jar -T FilterReads [-h/--help] -P/-PLATFORM [solid/illumina]"
-  def mainVerboseUsage = 
-    "usage: java -jar NGSTools.jar -T FilterReads [-h/--help] -P/-PLATFORM [solid/illumina]\n" +
-    "Arguments:\n" + "\t-h/--help\tPrint this message.\n" + 
-    "\t-P/-PLATFORM\tChoose solid or illumina reads.\n"
+  def mainUsage = List(description, 
+    "usage: java -jar NGSTools.jar -T FilterReads [-h/--help] -P/-PLATFORM [solid/illumina]\n").map(println(_))
+  def mainVerboseUsage = {
+    mainUsage 
+    List("Required Arguments:",
+         "  -P/-PLATFORM\tChoose solid or illumina reads.\n").map(println(_))
+    List("Optional Arguments:",
+	 "  -h/--help\tPrint this message and exit.\n").map(println(_))
+  } 
 
   /**
    * Parses out the platform of the reads 
@@ -59,11 +62,13 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
    */
   private def platform : (String, List[String])={
     this.args match {
-      case Nil => log.warn("Please select a platform\n" + mainUsage); sys.exit(1)
-      case "-h" :: tail => log.info(mainVerboseUsage); sys.exit(0)
+      case Nil => log.warn("Please select a platform\n"); mainUsage; sys.exit(1)
+      case "-h" :: tail => mainVerboseUsage; sys.exit(0)
+      case "--help" :: tail => mainVerboseUsage; sys.exit(0)
       case "-P" :: value :: tail => (value, tail)
-      case option :: tail => 
-        log.warn(mainUsage);
+      case "-PLATFORM" :: value :: tail => (value, tail)
+      case option :: tail =>
+        mainUsage; 
 	log.error(throw new IllegalArgumentException(
           "Unknown Option; Must specify platform first"));
           sys.exit(1);
@@ -81,7 +86,7 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
       case "solid" => solidFilters.main(otherArgs)
       case "illumina" => illuminaFilters.main(otherArgs)
       case option => 
-        log.warn(mainUsage);
+        mainUsage;
     	log.error(throw new IllegalArgumentException("Unknown platform "+option));
 	sys.exit(1); 
     }

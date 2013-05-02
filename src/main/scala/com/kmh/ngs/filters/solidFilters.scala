@@ -62,7 +62,7 @@ object solidFilters extends Logging {
     "  -h/--help\tPrint this message and exit.\n"
   private val required = List("incsfa", "incsq", "ocsfa", "ocsq")
   private val ioInstance = new IoUtil
-  private val filterFunctions = new ListBuffer[(CSFastaRecord, OptionMap) => Boolean]
+  private val filterFunctions = new ListBuffer[((CSFastaRecord, OptionMap)) => Boolean]
 
   /** Convert [[Any]] into [[java.io.File]]*/
   def anyToFile(a: Any) = a.asInstanceOf[File]
@@ -159,36 +159,42 @@ object solidFilters extends Logging {
       map
     else { 
       log.warn(mainUsage)
-      log.error(throw new IllegalArgumentException("Mising Required Arguments!!"))
+      log.error(throw new IllegalArgumentException("Missing Required Arguments!!"))
       sys.exit(1)
     }
   }
 
   def filterOptions(userOpts: OptionMap) = {
-    if (userOpts.isDefinedAt("missing"))
-      filterFunctions += isMissing
-    if (userOpts.isDefinedAt("minq"))
-      filterFunctions += isLowQual
-    if (userOpts.isDefinedAt("hpoly"))
-      filterFunctions += isHomopolymer
+    if (userOpts.isDefinedAt("missing")){
+      val tupMissing = Function tupled isMissing _
+      filterFunctions += tupMissing
+    }
+    if (userOpts.isDefinedAt("hpoly")){
+      val tupHomo = Function tupled isHomopolymer _
+      filterFunctions += tupHomo 
+    }
+    if (userOpts.isDefinedAt("minq")){
+      val tupLow = Function tupled isLowQual _
+      filterFunctions += tupLow 
+    }
   }
  
-  val isMissing = (rec: CSFastaRecord, userOpts: OptionMap) => {
+  def isMissing(rec: CSFastaRecord, userOpts: OptionMap) = {
     if (rec.seqLine.contains(".")) {
       ct_map("Missing Base") += 1
       true 
     } else false
   }
  
-  val isLowQual = (rec: CSFastaRecord, userOpts: OptionMap) => {
+  def isLowQual(rec: CSFastaRecord, userOpts: OptionMap) = {
     if (rec.averageQuality < anyToInt(userOpts("minq"))) {
       ct_map("Low Quality") += 1
       true
     } else false
   }
 
-  val isHomopolymer = (rec: CSFastaRecord, userOpts: OptionMap) => {
-    val checkString = "0" * (rec.seqLine.length * anyToDbl(userOpts("hpoly"))).toInt
+  def isHomopolymer(rec: CSFastaRecord, userOpts: OptionMap) = {
+    lazy val checkString = "0" * (rec.seqLine.length * anyToDbl(userOpts("hpoly"))).toInt
     if (rec.seqLine.contains(checkString)) {
       ct_map("Homopolymer") += 1
       true 
@@ -216,6 +222,7 @@ object solidFilters extends Logging {
     log.info("Processing SOLiD reads...")
     try {
       filterOptions(userOpts)
+      val filterList = filterFunctions.toList
       if (filterFunctions.isEmpty)
         solidIter.foreach(x => { 
           ct_map("Total Reads") += 1
@@ -224,10 +231,12 @@ object solidFilters extends Logging {
       else {
         solidIter.foreach(x => {
           ct_map("Total Reads") += 1
-          val results = filterFunctions.map(_(x, userOpts))
-          if (!results.contains(true)){
-            ct_map("Passed") += 1
-            x.writeToFile(seqWriter, qualWriter)}
+          //val results = filterFunctions.map(_(x, userOpts))
+          //if (!results.contains(true)){
+          filterList.find(_((x, userOpts)) == true) match {
+            case None => ct_map("Passed") += 1; x.writeToFile(seqWriter, qualWriter)
+            case Some(_) => null
+          }
         })
       }
     } catch { 

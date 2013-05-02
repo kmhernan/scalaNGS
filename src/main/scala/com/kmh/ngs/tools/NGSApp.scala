@@ -7,8 +7,8 @@ import java.io.File
  */
 abstract class NGSApp {
   protected def description: String
-  protected def mainUsage: String
-  protected def mainVerboseUsage: String
+  protected def mainUsage: List[Unit]
+  protected def mainVerboseUsage: List[Unit] 
   protected def preUsage = 
     "NGSTools -T '%s'. 2013, Kyle Hernandez. ".format(toolName, description) + 
     "UNLICENSED: http://unlicense.org/"

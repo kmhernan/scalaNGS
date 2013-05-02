@@ -53,8 +53,7 @@ class FastqRecord(
    * @returns average quality [Double]
    */
   def averageQuality(qv_offset: Int): Double = {
-    val qualArr: Array[Int] = this.qualLine.map(_.toInt - qv_offset).toArray
-    qualArr.sum.toDouble / qualArr.length
+    qualLine.foldLeft(0)(_+_.toInt - qv_offset) / qualLine.length.toDouble
   } 
  
   /**
@@ -62,7 +61,7 @@ class FastqRecord(
     *
     * @return barcode the string representation of the barcode
     */   
-  def barcode(): String = this.seqHeader.split(":").toList.reverse.head
+  def barcode(): String = seqHeader.split(":").toList.reverse.head
 
   /**
     * Makes a copy of the immutable class

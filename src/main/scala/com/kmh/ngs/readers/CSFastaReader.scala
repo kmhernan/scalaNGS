@@ -48,8 +48,7 @@ class CSFastaRecord(
    * @return the average quality of the read.
    */
   def averageQuality: Double = {
-    val qualArray = this.qualLine.split(" ").map(_.toDouble).toArray
-    qualArray.sum / qualArray.length
+    qualLine.split(" ").foldLeft(0)(_+_.toInt) / (seqLine.length - 1).toDouble
   }
 
   /**
@@ -101,7 +100,7 @@ class CSFastaReader(
         log.error(throw new RuntimeException("Invalid sequence header type: Excepted '>'"))
 
       // Sequence
-      val seqLine: String = trimSeq(start, end, seqReader.readLine())
+      val (seqLine, seqLength): (String, Int) = trimSeq(start, end, seqReader.readLine())
 
       // Qual Name 
       val qualHeader: String = qualReader.readLine()
@@ -112,7 +111,14 @@ class CSFastaReader(
         log.error(throw new RuntimeException("Invalid quality header type: Expected '>'"))
      
       // Quality
-      val qualLine: String = trimQ(start, end, qualReader.readLine())
+      val (qualLine, qualLength): (String, Int) = trimQ(start, end, qualReader.readLine())
+
+      // Check lengths
+      if (seqLength != qualLength){
+        log.warn("Read %s has sequence length %s and quality length %s. Skipping read...".format(
+		seqHeader, seqLength, qualLength))
+        nextRecord = this.readNextRecord
+      }
 
       // Create new CSFastaRecord
       new CSFastaRecord(seqHeader, seqLine, qualHeader, qualLine)
@@ -182,25 +188,26 @@ class CSFastaReader(
    * @param string - Sequence to trim
    *
    */
-  def trimSeq(st: Option[Int], en: Option[Int], string: String): String = {
+  def trimSeq(st: Option[Int], en: Option[Int], string: String): (String, Int) = {
+    val currLen: Int = string.length - 1
     (st, en) match {
       case (Some(st), Some(en)) => 
 	if (st == 1)
-     	  string.slice(st-1, en + 1)
+     	  (string.slice(st-1, en + 1), currLen)
         else {
   	  val adaptBase = csToBS(string, st)
-          adaptBase + string.slice(st, en + 1)
+          (adaptBase + string.slice(st, en + 1), currLen)
 	}
       case (Some(st), None) =>
 	if (st == 1)
-	  string 
+	  (string, currLen) 
      	else {
  	  val adaptBase = csToBS(string, st) 
-	  adaptBase + string.slice(st, string.length)
+	  (adaptBase + string.slice(st, string.length), currLen)
 	}
       case (None, Some(en)) =>
-	string.slice(0, string.length - en)
-      case (None, None) => string
+	(string.slice(0, string.length - en), currLen)
+      case (None, None) => (string, currLen)
     }
   }
 
@@ -208,15 +215,16 @@ class CSFastaReader(
    * @method trimQ - Trims quality based on user input
    *
    */
-  def trimQ(st: Option[Int], en: Option[Int], string: String): String = {
+  def trimQ(st: Option[Int], en: Option[Int], string: String): (String, Int) = {
+    val currLen: Int = string.split(" ").length
     (st, en) match {
       case (Some(st), Some(en)) => 
-     	  string.split(" ").toArray.slice(st-1, en).mkString(" ")
+     	  (string.split(" ").toArray.slice(st-1, en).mkString(" "), currLen)
       case (Some(st), None) =>
-	  string.split(" ").toArray.slice(st-1, string.length).mkString(" ")
+	  (string.split(" ").toArray.slice(st-1, string.length).mkString(" "), currLen)
       case (None, Some(en)) =>
-	string.split(" ").toArray.slice(0, string.length - en).mkString(" ")
-      case (None, None) => string
+	(string.split(" ").toArray.slice(0, string.length - en).mkString(" "), currLen)
+      case (None, None) => (string, currLen)
     }
   }
 

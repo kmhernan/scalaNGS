@@ -46,10 +46,13 @@ object NGSTools extends Logging {
   val programName = "NGSTools"
   val header      = "NGSTools v1.0.0 - 2013, Kyle Hernandez, UNLICENSED: http://unlicense.org/" 
   val desc        = "A suite of tools for NGS data written in the Scala language"
-  def mainUsage   = List("Select a tool to use...", 
-	"Usage: java -jar NGSTools.jar -T tool [-h/--help]").map(log.info(_))
-  def mainVerboseUsage = List("Usage: java -jar NGSTools.jar -T tool [-h/--help]", 
-	"Required:", "\t-T\tFilterReads, etc.").map(log.info(_))
+  def mainUsage   = List("\nSelect a tool to use (option -h for available tools and their descriptions)", 
+    "Usage: java -jar NGSTools.jar -T tool [-h/--help]\n").map(println(_))
+  def mainVerboseUsage = {
+    mainUsage
+    List("Required Arguments:", "  -T\tFilterReads, etc.\n").map(println(_))
+    List("Optional Arguments:", "  -h/--help\tPrint this usage statement and exit program\n").map(println(_))
+  }
 
   /**
    * @function getAnalysis
@@ -92,15 +95,13 @@ object NGSTools extends Logging {
    *
    */ 
   def main(args: Array[String]): Unit = {
-    log.info("-"*80)
-    log.info(header)
-    log.info(desc)
-    log.info("-"*80)
+    List("-"*80, header, desc, "-"*80).map(log.info(_))
 
     val start = System.currentTimeMillis()
     val analysis = getAnalysis(args.toList)
-    log.info("Arguments: " + args.mkString(" "))
-    log.info("Starting '%s'".format(analysis.getClass))
+
+    List("Arguments: " + args.mkString(" "),
+         "Starting '%s'".format(analysis.getClass)).map(log.info(_))
 
     analysis.run
 
