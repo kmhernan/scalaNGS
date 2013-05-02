@@ -49,11 +49,13 @@ object illuminaFilters extends Logging {
         "Low Quality"->0,
         "Missing Base"->0,
         "Passed"->0)
-  private val mainUsage = 
+  private def mainUsage = println(
     "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM illumina -I/-INPUT file.fastq\n" +
     "-O/-OUTPUT file.fastq [-START Int] [-END Int] [-HPOLY Double] [-MINQ Int] [-NMISSING Int]\n" +
-    "[-POLYA Double] [-h/--help]\n"
-  private val mainVerboseUsage = mainUsage +
+    "[-POLYA Double] [-h/--help]\n")
+  private def mainVerboseUsage = {
+    mainUsage
+    println(
     "REQUIRED:\n" +
     "  -I/-INPUT\tInput raw read files: <file.fastq>|<file.fastq.gz>\n" +
     "  -O/-OUTPUT\tOutput filtered read files: <file.fastq>\n" +
@@ -67,7 +69,8 @@ object illuminaFilters extends Logging {
     "  -MINQ\tMinimum average quality score allowed.\n" +
     "  -NMISSING\tLower limit for N's allowed.\n" + 
     "  -POLYA\tIf a read has trailing A's of length <input> * sequence length, trim them.\n" +
-    "  -h/--help\tPrint this message and exit.\n"
+    "  -h/--help\tPrint this message and exit.\n")
+  }
   private val required = List("infq", "outfq", "offset")
   private val ioInstance = new IoUtil
   private val filterFunctions = new ListBuffer[((FastqRecord, OptionMap)) => Boolean]
@@ -102,9 +105,9 @@ object illuminaFilters extends Logging {
       case "-MINQ" :: value :: tail => parseIllumina(map ++ Map("minq"->value.toInt), tail)
       case "-NMISSING" :: value :: tail => parseIllumina(map ++ Map("minN"->value.toInt), tail)
       case "-POLYA" :: value :: tail => parseIllumina(map ++ Map("polyA"->value.toDouble), tail)
-      case "-h" :: value :: tail => log.info(mainVerboseUsage); sys.exit(0);
-      case "--help" :: value :: tail => log.info(mainVerboseUsage); sys.exit(0);
-      case option => log.warn(mainUsage);
+      case "-h" :: value :: tail => mainVerboseUsage; sys.exit(0);
+      case "--help" :: value :: tail => mainVerboseUsage; sys.exit(0);
+      case option => mainUsage;
                      log.error(throw new IllegalArgumentException("Unknown Option "+option));
                      sys.exit(1);
     }
@@ -121,7 +124,7 @@ object illuminaFilters extends Logging {
     if (required.forall(x => map.isDefinedAt(x))) 
       map
     else { 
-      log.warn(mainUsage)
+      mainUsage
       log.error(throw new IllegalArgumentException("Missing Required Arguments!!"))
       sys.exit(1)
     }
@@ -188,10 +191,10 @@ object illuminaFilters extends Logging {
 
       illuminaIter.foreach(x => {
         ct_map("Total Reads") += 1
-        if (filtList.map(Map(x -> userOpts) map _ ).flatten.forall( _ == false )){
-          ct_map("Passed") += 1
-          x.writeToFile(seqWriter)
-        }
+        filtList.find(_((x,userOpts)) == true) match {
+          case None => ct_map("Passed") +=1; x.writeToFile(seqWriter)
+          case Some(_) => null 
+          }
       }) 
     }
     catch {
