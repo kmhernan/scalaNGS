@@ -46,15 +46,10 @@ object NGSTools extends Logging {
   val programName = "NGSTools"
   val header      = "NGSTools v1.0.0 - 2013, Kyle Hernandez, UNLICENSED: http://unlicense.org/" 
   val desc        = "A suite of tools for NGS data written in the Scala language"
-  val preUsage    = "NGSTools: Version 1.0.0. UNLICENSED: http://unlicense.org/\n" +
-                    "\t2013, Kyle Hernandez. Suite of command-line tools for\n" +
-                    "\tNGS reads.\n"
-  val mainUsage   = preUsage +
-                    "Select a tool to use...\n" +
-                    "Usage: java -jar NGSTools.jar -T [Tool] -h\n"
-  val mainVerboseUsage = preUsage +
-                         "Usage: java -jar NGSTools.jar -T [Tool] -h\n" +
-                         "\t-T\t" + "FilterReads, etc.\n"
+  def mainUsage   = List("Select a tool to use...", 
+	"Usage: java -jar NGSTools.jar -T tool [-h/--help]").map(log.info(_))
+  def mainVerboseUsage = List("Usage: java -jar NGSTools.jar -T tool [-h/--help]", 
+	"Required:", "\t-T\tFilterReads, etc.").map(log.info(_))
 
   /**
    * @function getAnalysis
@@ -64,12 +59,12 @@ object NGSTools extends Logging {
    */
   protected def getAnalysis(list: List[String])={
     list match {
-      case Nil => log.warn(mainUsage); sys.exit(1)
-      case "-h" :: tail => log.info(mainVerboseUsage); sys.exit(0)
-      case "-help" :: tail => log.info(mainVerboseUsage); sys.exit(0)
+      case Nil => mainUsage; sys.exit(1)
+      case "-h" :: tail => mainVerboseUsage; sys.exit(0)
+      case "-help" :: tail => mainVerboseUsage; sys.exit(0)
       case "-T" :: value :: tail => loadTool(value, tail)
       case "-TOOL" :: value :: tail => loadTool(value, tail)
-      case option :: tail => log.warn(mainUsage);
+      case option :: tail => mainUsage;
 		  	     log.error(throw new IllegalArgumentException("Unknown Option "+option));
 		             sys.exit(1);
      }
@@ -85,7 +80,7 @@ object NGSTools extends Logging {
   protected def loadTool(value: String, list: List[String]) = {
     value match {
       case "FilterReads" => new FilterReads(list)
-      case option => log.info(mainUsage);
+      case option => mainUsage;
 		     log.error(throw new IllegalArgumentException("Unknown Option "+option));
                      sys.exit(1);
     }

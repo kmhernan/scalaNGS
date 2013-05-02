@@ -35,12 +35,11 @@ import org.eintr.loglady.Logging
 /**
  * Represents a literal Fastq record 
  *
- * @param seqHeader the read name
- * @param seqLine the sequence
- * @param qualHeader the optional quality name
- * @param qualLine the quality
+ * @constructor seqHeader the read name
+ * @constructor seqLine the sequence
+ * @constructor qualHeader the optional quality name
+ * @constructor qualLine the quality
  */
-
 class FastqRecord(
         val seqHeader: String, 
         val seqLine: String, 
@@ -57,9 +56,34 @@ class FastqRecord(
     val qualArr: Array[Int] = this.qualLine.map(_.toInt - qv_offset).toArray
     qualArr.sum.toDouble / qualArr.length
   } 
-    
+ 
+  /**
+    * Provides the barcode of the current record.
+    *
+    * @return barcode the string representation of the barcode
+    */   
   def barcode(): String = this.seqHeader.split(":").toList.reverse.head
-  
+
+  /**
+    * Makes a copy of the immutable class
+    *
+    * @param seqHeader the sequence read header
+    * @param seqLine the sequence
+    * @param qualHeader the quality header
+    * @param qualLine the quality score string
+    * @return a new instance of [[com.kmh.ngs.readers.FastqRecord]]
+    */ 
+  def copy(
+	seqHeader: String = seqHeader, 
+	seqLine: String = seqLine,
+	qualHeader: String = qualHeader,
+	qualLine: String = qualLine) = new FastqRecord(seqHeader, seqLine, qualHeader, qualLine)
+
+  /**
+    * Writes the current record to a file in Fastq format.
+    *
+    * @param ofq the output file represented as an [[java.io.OutputStreamWriter]]
+    */ 
   def writeToFile(ofq: OutputStreamWriter): Unit = {
     ofq.write(this.seqHeader + "\n" + this.seqLine + "\n" + 
               this.qualHeader + "\n" + this.qualLine + "\n")
@@ -69,8 +93,10 @@ class FastqRecord(
 /**
  * Reads a fastq file
  *
- * @param reader instance of BufferedReader
- * @param file the file from which the buffer was created
+ * @constructor reader instance of BufferedReader
+ * @constructor file the file from which the buffer was created
+ * @constructor the start trim position [[Option[Int]]
+ * @constructor the end trim position [[Option[Int]]]
  */
 class FastqReader(
 	val reader: BufferedReader, 
@@ -79,6 +105,13 @@ class FastqReader(
 	val end: Option[Int]) extends Logging {
   var nextRecord: FastqRecord = readNextRecord
 
+  /**
+    * Reads the file and returns a [[com.kmh.ngs.readers.FastqRecord]]
+    *
+    * @return [[com.kmh.ngs.readers.FastqRecord]]
+    * @throws [[RuntimeException]]
+    * @throws [[java.io.IOException]]
+    */
   def readNextRecord: FastqRecord = {
     try {
       // Header
@@ -123,10 +156,10 @@ class FastqReader(
 
   /**
    * Trims sequence and qual based on user-input
-   * @param st - Optional start position (1-based index).
-   * @param en - Optional end position (1-based index).
-   * @param string - Either quality or sequence to trim.
    *
+   * @param st - [[Option[Int]] start position (1-based index).
+   * @param en - [[Option[Int]] end position (1-based index).
+   * @param string - Either quality or sequence to trim.
    */
   def trim(st: Option[Int], en: Option[Int], string: String): String = {
     (st, en) match {
@@ -144,6 +177,15 @@ class FastqReader(
  *
  */
 object FastqReader {
+  /**
+    * Creates an [[Iterator[FastqRecord]]]
+    *
+    * @param seqReader the input Fastq stream as a [[java.io.BufferedReader]]
+    * @param seqFile the finput Fastq [[java.io.File]]
+    * @param start the [[Option[Int]] start position
+    * @param end the [[Option[Int]]] end position
+    * @return [[Iterator[FastqRecord]]]
+    */
   def parseFastq(
         seqReader: BufferedReader,
         seqFile: File,

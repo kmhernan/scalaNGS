@@ -70,7 +70,7 @@ object illuminaFilters extends Logging {
     "  -h/--help\tPrint this message and exit.\n"
   private val required = List("infq", "outfq", "offset")
   private val ioInstance = new IoUtil
-  private val filterFunctions = new ListBuffer[(FastqRecord, OptionMap) => Boolean]
+  private val filterFunctions = new ListBuffer[((FastqRecord, OptionMap)) => Boolean]
   private val basesArray = Array[String]("A", "C", "G", "T")
   /** Convert [[Any]] into [[java.io.File]]*/
   def anyToFile(a: Any) = a.asInstanceOf[File]
@@ -128,29 +128,35 @@ object illuminaFilters extends Logging {
   }
 
   def filterOptions(userOpts: OptionMap) = {
-    if (userOpts.isDefinedAt("minN"))
-      filterFunctions += isMissing
-    if (userOpts.isDefinedAt("hpoly"))
-      filterFunctions += isHomopolymer
-    if (userOpts.isDefinedAt("minq"))
-      filterFunctions += isLowQual
+    if (userOpts.isDefinedAt("minN")){
+      val tupMiss = Function tupled isMissing _
+      filterFunctions += tupMiss
+    }
+    if (userOpts.isDefinedAt("hpoly")){
+      val tupHomo = Function tupled isHomopolymer _
+      filterFunctions += tupHomo
+    }
+    if (userOpts.isDefinedAt("minq")){
+      val tupLow = Function tupled isLowQual _
+      filterFunctions += tupLow
+    }
   }
 
-  val isMissing = (rec: FastqRecord, userOpts: OptionMap) => {
+  def isMissing(rec: FastqRecord, userOpts: OptionMap) = {
     if (rec.seqLine.count(_ == 'N') > anyToInt(userOpts("minN"))){
       ct_map("Missing Base") += 1
       true
     } else false
   }
 
-  val isLowQual = (rec: FastqRecord, userOpts: OptionMap) => {
+  def isLowQual(rec: FastqRecord, userOpts: OptionMap) = {
     if (rec.averageQuality(anyToInt(userOpts("minq"))) < anyToInt(userOpts("minq"))) {
       ct_map("Low Quality") += 1
       true
     } else false
   }
 
-  val isHomopolymer = (rec: FastqRecord, userOpts: OptionMap) => {
+  def isHomopolymer(rec: FastqRecord, userOpts: OptionMap) = {
     if (basesArray.map(_*(rec.seqLine.length*anyToDbl(userOpts("hpoly"))).toInt).forall(rec.seqLine.contains(_) == false))
       false
     else {
@@ -170,19 +176,22 @@ object illuminaFilters extends Logging {
     log.info("Processing Illumina reads...")
     try {
       filterOptions(userOpts)
-      /*if(userOpts.isDefinedAt("polyA"))
-        val illuminaIter = parsePoly(seqReader, infq, userOpts)
-      else*/
+      val filtList = filterFunctions.toList
+
+      //if(userOpts.isDefinedAt("polyA"))
+      //  val illuminaIter = parsePoly(seqReader, infq, userOpts)
+      //else
         val illuminaIter = FastqReader.parseFastq(
         	seqReader, infq,
         	if (userOpts.isDefinedAt("start")) Some(anyToInt(userOpts("start"))) else None,
         	if (userOpts.isDefinedAt("end")) Some(anyToInt(userOpts("end"))) else None)
+
       illuminaIter.foreach(x => {
         ct_map("Total Reads") += 1
-        val results = filterFunctions.map(_(x, userOpts))
-        if (!results.contains(true)){
+        if (filtList.map(Map(x -> userOpts) map _ ).flatten.forall( _ == false )){
           ct_map("Passed") += 1
-          x.writeToFile(seqWriter)}
+          x.writeToFile(seqWriter)
+        }
       }) 
     }
     catch {
@@ -200,4 +209,4 @@ object illuminaFilters extends Logging {
              "PASSED="+ct_map("Passed"))
   }
 
-}  
+} 
