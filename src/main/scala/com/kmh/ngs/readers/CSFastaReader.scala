@@ -87,7 +87,10 @@ class CSFastaReader(
 
   /**
    * Reads next record from files 
-   * 
+   *
+   * @return [[CSFastaRecord]]
+   * @throws [[RuntimeException]] 
+   * @throws [[IOException]] 
    */
   def readNextRecord: CSFastaRecord = {
     try {
@@ -117,11 +120,11 @@ class CSFastaReader(
       if (seqLength != qualLength){
         log.warn("Read %s has sequence length %s and quality length %s. Skipping read...".format(
 		seqHeader, seqLength, qualLength))
-        nextRecord = this.readNextRecord
+        next
       }
-
-      // Create new CSFastaRecord
-      new CSFastaRecord(seqHeader, seqLine, qualHeader, qualLine)
+      else 
+        // Create new CSFastaRecord
+        new CSFastaRecord(seqHeader, seqLine, qualHeader, qualLine)
     }
     catch {
       case ioe: IOException => log.error(

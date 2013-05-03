@@ -46,14 +46,15 @@ object illuminaFilters extends Logging {
         "Total Reads"->0,
         "Homopolymer"->0,
         "Poly A"->0,
+	"Too Short"->0,
         "Low Quality"->0,
         "Missing Base"->0,
         "Passed"->0)
-  private val SP = " "*( "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM illumina ".length)
+  private val SP = " "*("Usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM illumina ".length)
   private def mainUsage = List(
     "\nusage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM illumina -I/-INPUT file.fastq -O/-OUTPUT file.fastq -QV-OFFSET",
     SP + "[-START Int] [-END Int] [-HPOLY Double] [-MINQ Int] [-NMISSING Int]",
-    SP + "[-POLYA Double] [-h/--help]\n").map(println(_))
+    SP + "[-POLYA Double Int] [-h/--help]\n").map(println(_))
   private def mainVerboseUsage = {
     mainUsage
     List("Required Arguments:",
@@ -64,16 +65,16 @@ object illuminaFilters extends Logging {
       "  -START\t5' cut position (1-based index)",
       "  -END\t\t3' cut position (1-based index)",
       "      \t\tex. AlfI: -START 1 -END 36",
-      "  -HPOLY\tRelative length of repetitive base to consider a homopolymer.",
-      "        \t(Proportion of read length; e.g., between 0 and 1)",
+      "  -HPOLY\tRelative length of repetitive base to consider a homopolymer. (Proportion of read length; e.g., between 0 and 1)",
       "  -MINQ\t\tMinimum average quality score allowed.",
       "  -NMISSING\tLower limit for N's allowed.", 
-      "  -POLYA\tIf a read has trailing A's of length <input> * sequence length, trim them.",
+      "  -POLYA\tTakes two values:",
+      "        \t  1) ProportionLimit [Double] - If a read has trailing A's of length <value> * sequence length, trim them.",
+      "        \t  2) MinimumSize [Int] - If the trimmed sequence is shorter than <value>, remove it.",
       "  -h/--help\tPrint this message and exit.\n").map(println(_))
   }
   private val required = List("infq", "outfq", "offset")
   private val ioInstance = new IoUtil
-  private val filterFunctions = new ListBuffer[((FastqRecord, OptionMap)) => Boolean]
   private val basesArray = Array[String]("A", "C", "G", "T")
 
   /** Convert [[Any]] into [[java.io.File]]*/
@@ -105,7 +106,14 @@ object illuminaFilters extends Logging {
       case "-HPOLY" :: value :: tail => parseIllumina(map ++ Map("hpoly"->value.toDouble), tail)
       case "-MINQ" :: value :: tail => parseIllumina(map ++ Map("minq"->value.toInt), tail)
       case "-NMISSING" :: value :: tail => parseIllumina(map ++ Map("minN"->value.toInt), tail)
-      case "-POLYA" :: value :: tail => parseIllumina(map ++ Map("polyA"->value.toDouble), tail)
+      case "-POLYA" :: value :: value2 :: tail => 
+	try
+ 	  parseIllumina(map ++ Map("polyA"->value.toDouble, "minSize"->value2.toInt), tail)
+  	catch {
+  	  case err: Throwable => 
+		log.error("POLYA takes 2 values: ProportionLimit [Double] MinimumSize [Int]"+err);
+		sys.exit(1)
+      	} 
       case "-h" :: tail => mainVerboseUsage; sys.exit(0)
       case "--help" :: tail => mainVerboseUsage; sys.exit(0)
       case option => mainUsage;
@@ -135,7 +143,15 @@ object illuminaFilters extends Logging {
     }
   }
 
-  def filterOptions(userOpts: OptionMap) = {
+  /**
+    * Builds a list of filtering functions based on the command-line arguments.
+    * The filtering functions are converted into the tupled functions for easier mapping.
+    *
+    * @param userOpts an [[OptionMap]] of command-line arguments
+    * @return [[List[((FastqRecord, OptionMap))]]]
+    */
+  private def filterOptions(userOpts: OptionMap): List[((FastqRecord, OptionMap)) => Boolean] = {
+    val filterFunctions = new ListBuffer[((FastqRecord, OptionMap)) => Boolean]
     if (userOpts.isDefinedAt("minN")){
       val tupMiss = Function tupled isMissing _
       filterFunctions += tupMiss
@@ -148,15 +164,30 @@ object illuminaFilters extends Logging {
       val tupLow = Function tupled isLowQual _
       filterFunctions += tupLow
     }
+    filterFunctions.toList
   }
 
-  def isMissing(rec: FastqRecord, userOpts: OptionMap) = {
+  /**
+    * Tests if the sequence has more than the number of N's allowed.
+    *
+    * @param rec a [[FastqRecord]] instance
+    * @param userOpts an [[OptionMap]] of command-line arguments
+    * @return [[Boolean]] true if fails else false
+    */
+  private def isMissing(rec: FastqRecord, userOpts: OptionMap) = {
     if (rec.seqLine.count(_ == 'N') > anyToInt(userOpts("minN"))){
       ct_map("Missing Base") += 1
       true
     } else false
   }
 
+  /**
+    * Tests whether the average quality score is below the minimum quality threshold. 
+    *
+    * @param rec a [[FastqRecord]] instance
+    * @param userOpts an [[OptionMap]] of command-line arguments
+    * @return [[Boolean]] true if fails else false
+    */
   def isLowQual(rec: FastqRecord, userOpts: OptionMap) = {
     if (rec.averageQuality(anyToInt(userOpts("offset"))) < anyToInt(userOpts("minq"))) {
       ct_map("Low Quality") += 1
@@ -164,6 +195,13 @@ object illuminaFilters extends Logging {
     } else false
   }
 
+  /**
+    * Tests whether the sequence contains repetitive bases. 
+    *
+    * @param rec a [[FastqRecord]] instance
+    * @param userOpts an [[OptionMap]] of command-line arguments
+    * @return [[Boolean]] true if fails else false
+    */
   def isHomopolymer(rec: FastqRecord, userOpts: OptionMap) = {
     if (basesArray.map(_*(rec.seqLine.length*anyToDbl(userOpts("hpoly"))).toInt).forall(rec.seqLine.contains(_) == false))
       false
@@ -173,6 +211,24 @@ object illuminaFilters extends Logging {
     }
   }
 
+  /**
+    * Checks if the sequence has a polyA tail, removes it if it does.
+    *
+    * @param rec a [[FastqRecord]] instance
+    * @param polyLimit the user-provided relative length of A sequences to be considered a polyA tail
+    * @return [[FastqRecord]]
+    */
+  private def removePolyA(rec: FastqRecord, polyLimit: Double): FastqRecord = {
+    lazy val paString = "A"*(rec.seqLine.length*polyLimit).toInt
+    val paIndex = rec.seqLine.indexOf(paString)
+    if (paIndex < 0)
+      rec
+    else {
+      ct_map("Poly A") += 1
+      rec.copy(seqLine = rec.seqLine.take(paIndex), qualLine = rec.qualLine.take(paIndex))
+    }
+  }
+    
   def main(args: List[String]): Unit = {
     val userOpts = parseIllumina(Map(), args)
     val infq  = anyToFile(userOpts("infq"))
@@ -183,24 +239,34 @@ object illuminaFilters extends Logging {
 
     log.info("Processing Illumina reads...")
     try {
-      filterOptions(userOpts)
-      val filterList = filterFunctions.toList
+      val filterList = filterOptions(userOpts) 
+      val illuminaIter = FastqReader.parseFastq(
+      	seqReader, infq,
+       	if (userOpts.isDefinedAt("start")) Some(anyToInt(userOpts("start"))) else None,
+        if (userOpts.isDefinedAt("end")) Some(anyToInt(userOpts("end"))) else None)
 
-      //if(userOpts.isDefinedAt("polyA"))
-      //  val illuminaIter = parsePoly(seqReader, infq, userOpts)
-      //else
-        val illuminaIter = FastqReader.parseFastq(
-        	seqReader, infq,
-        	if (userOpts.isDefinedAt("start")) Some(anyToInt(userOpts("start"))) else None,
-        	if (userOpts.isDefinedAt("end")) Some(anyToInt(userOpts("end"))) else None)
-
-      illuminaIter.foreach(x => {
-        ct_map("Total Reads") += 1
-        filterList.find(_((x,userOpts)) == true) match {
-          case None => ct_map("Passed") +=1; x.writeToFile(seqWriter)
-          case Some(_) => null 
+      if(userOpts.isDefinedAt("polyA"))
+        illuminaIter.foreach(rec => {
+          ct_map("Total Reads") += 1
+          val recWithoutPoly = removePolyA(
+		rec, 
+		anyToDbl(userOpts("polyA"))) 
+	  if (recWithoutPoly.seqLine.length < anyToInt(userOpts("minSize")))
+            ct_map("Too Short") += 1
+          else 
+	    filterList.find(_((recWithoutPoly, userOpts)) == true) match { 
+                case None => ct_map("Passed") +=1; recWithoutPoly.writeToFile(seqWriter)
+                case Some(_) => null 
+            }
+        }) 
+      else 
+        illuminaIter.foreach(rec => {
+          ct_map("Total Reads") += 1
+          filterList.find(_((rec,userOpts)) == true) match {
+            case None => ct_map("Passed") +=1; rec.writeToFile(seqWriter)
+            case Some(_) => null 
           }
-      }) 
+        }) 
     }
     catch {
       case err: Throwable => List(seqReader, seqWriter).map(ioInstance.closer(_));
@@ -215,6 +281,8 @@ object illuminaFilters extends Logging {
              "MISSING="+ct_map("Missing Base")+" "+
              "LOWQ="+ct_map("Low Quality")+" "+
              "HOMOPOLYMER="+ct_map("Homopolymer")+" "+
+             "POLYA="+ct_map("Poly A")+" "+
+             "TOOSHORT="+ct_map("Too Short")+" "+
              "PASSED="+ct_map("Passed"))
   }
 
