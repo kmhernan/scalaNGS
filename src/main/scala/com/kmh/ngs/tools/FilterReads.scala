@@ -44,11 +44,12 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
   def toolName = "'%s'".format(this.getClass()) 
   def description = "Filters NGS reads based on user inputs."
   def mainUsage = List(description, 
-    "usage: java -jar NGSTools.jar -T FilterReads [-h/--help] -P/-PLATFORM [solid/illumina]\n").map(println(_))
+    "usage: java -jar NGSTools.jar -T FilterReads [-h/--help] -P/-PLATFORM [solid/SE_illumina/PE_illumina]\n").map(println(_))
   def mainVerboseUsage = {
     mainUsage 
     List("Required Arguments:",
-         "  -P/-PLATFORM\tChoose solid or illumina reads.\n").map(println(_))
+         "  -P/-PLATFORM\tChoose solid (currently only SE reads), " +
+         "SE_illumina (single), or PE_illumina (paired) reads.\n").map(println(_))
     List("Optional Arguments:",
 	 "  -h/--help\tPrint this message and exit.\n").map(println(_))
   } 
@@ -84,7 +85,8 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
     val (pltfrm, otherArgs) = this.platform 
     pltfrm match {
       case "solid" => solidFilters.main(otherArgs)
-      case "illumina" => illuminaFilters.main(otherArgs)
+      case "SE_illumina" => illuminaFilters.main(otherArgs, paired=False)
+      case "PE_illumina" => illuminaFilters.main(otherArgs, paired=True)
       case option => 
         mainUsage;
     	log.error(throw new IllegalArgumentException("Unknown platform "+option));
