@@ -27,14 +27,14 @@
  */
 
 package com.kmh.ngs.filters
-import com.kmh.ngs.formats._
-import com.kmh.ngs.cmdline.{FilterSolidArgs}
+import com.kmh.ngs.formats.{Read, CSFastaRecord, FastqRecord}
+import com.kmh.ngs.readers.ReadReader
 import java.io.OutputStreamWriter
 import scala.collection.mutable.{ListBuffer, Map}
-import com.kmh.ngs.io.IoUtil
 
-object SequenceFilters extends FilterSolidArgs with IoUtil {
-  lazy val ct_map= Map[String, Int]( 
+object SequenceFilters {
+  type OptionMap = scala.collection.immutable.Map[Symbol, Any]
+  lazy val ct_map = Map[String, Int]( 
           "Total Reads"->0,
           "Homopolymer"->0,
           "Poly A"->0,
@@ -45,13 +45,13 @@ object SequenceFilters extends FilterSolidArgs with IoUtil {
 
   def isMissing(read: Read, userOpts: OptionMap): Boolean = {
     read match {
-      case CSFastqRecord(_,seq,_,_) =>
-        if (seq.contains(".")) {
+      case cs: CSFastaRecord =>
+        if (cs.sequence.contains(".")) {
           ct_map("Missing Base") += 1
           true
         } else false
-      case FastqRecord(_,seq,_,_) =>
-        if (seq.count(_ == 'N') > userOpts("minN").asInstanceOf[Int]) {
+      case fq: FastqRecord =>
+        if (fq.sequence.count(_ == 'N') > userOpts('minN).asInstanceOf[Int]) {
           ct_map("Missing Base") += 1
           true
         } else false
@@ -60,14 +60,14 @@ object SequenceFilters extends FilterSolidArgs with IoUtil {
 
   def isLowQual(read: Read, userOpts: OptionMap): Boolean = {
     read match {
-      case cs: CSFastqRecord(_,_,_,_) => {
-        if (cs.averageQuality < getArg(userOpts('minq)) {
+      case cs: CSFastaRecord => {
+        if (cs.averageQuality(None) < userOpts('minq).asInstanceOf[Int]) {
           ct_map("Low Quality") += 1
           true
         } else false
       }
-      case fq: FastqRecord(_,seq,_,_) => {
-        if (fq.averageQuality(userOpts("offset").asInstanceOf[Int]) < userOpts("minq").asInstanceOf[Int]) {
+      case fq: FastqRecord => {
+        if (fq.averageQuality(Some(userOpts('offset).asInstanceOf[Int])) < userOpts('minq).asInstanceOf[Int]) {
           ct_map("Low Quality") += 1
           true
         } else false
@@ -77,15 +77,15 @@ object SequenceFilters extends FilterSolidArgs with IoUtil {
 
   def isHomopolymer(read: Read, userOpts: OptionMap): Boolean = {
     read match {
-      case CSFastaRecord(_,seq,_,_) =>
-        lazy val checkString = "0" * (seq.length * getArg(userOpts('hpoly)).toInt
-        if (seq.contains(checkString)) {
+      case cs: CSFastaRecord =>
+        lazy val checkString = "0" * (cs.sequence.length * userOpts('hpoly).asInstanceOf[Double]).toInt
+        if (cs.sequence.contains(checkString)) {
           ct_map("Homopolymer") += 1
           true
         } else false
-      case FastqRecord(_,seq,_,_) =>
+      case fq: FastqRecord =>
         lazy val basesArray = Array[String]("A", "C", "G", "T")
-        if (basesArray.map(_*(seq.length*userOpts("hpoly").asInstanceOf[Double]).toInt).forall(seq.contains(_) == false))
+        if (basesArray.map(_*(fq.sequence.length*userOpts('hpoly).asInstanceOf[Double]).toInt).forall(fq.sequence.contains(_) == false))
           false
         else {
           ct_map("Homopolymer") += 1
@@ -94,7 +94,20 @@ object SequenceFilters extends FilterSolidArgs with IoUtil {
     }
   }
 
-  def apply(readIterator: , userOpts: OptionMap): List[((Read, OptionMap)) => Boolean] = {
+  def removePolyA(rec: Read, polyLimit: Double): Read = rec match {
+    case fq: FastqRecord => {
+      lazy val paString = "A"*(fq.sequence.length*polyLimit).toInt
+      val paIndex = fq.sequence.indexOf(paString)
+      if (paIndex < 0)
+        fq 
+      else {
+        ct_map("Poly A") += 1
+        fq.copy(sequence = fq.sequence.take(paIndex), quality = fq.quality.take(paIndex))
+      }
+    }
+  }
+
+  def loadFilters(userOpts: OptionMap): List[((Read, OptionMap)) => Boolean] = {
     val filterFunctions = new ListBuffer[((Read, OptionMap)) => Boolean]
     if (userOpts.isDefinedAt('minN))
       filterFunctions += Function tupled isMissing _
@@ -103,6 +116,31 @@ object SequenceFilters extends FilterSolidArgs with IoUtil {
     if (userOpts.isDefinedAt('minq))
       filterFunctions += Function tupled isLowQual _
     return filterFunctions.toList
+  }
+
+  def apply(readReader: ReadReader, userOpts: OptionMap, outList: List[OutputStreamWriter]): Map[String, Int] = {
+    val filterFunctions = loadFilters(userOpts)
+    if(userOpts.isDefinedAt('polyA))
+      readReader.iter.foreach(rec => {
+        ct_map("Total Reads") += 1
+        val recWithoutPoly = removePolyA(rec, userOpts('polyA).asInstanceOf[Double])
+        if (recWithoutPoly.sequence.length < userOpts('minSize).asInstanceOf[Int])
+          ct_map("Too Short") += 1
+        else
+          filterFunctions.find(_((recWithoutPoly, userOpts)) == true) match {
+            case None => ct_map("Passed") += 1; recWithoutPoly.writeToFile(outList);
+            case Some(_) => null
+          }
+      })
+    else 
+      readReader.iter.foreach(rec => {
+        ct_map("Total Reads") += 1
+        filterFunctions.find(_((rec, userOpts)) == true) match {
+          case None => ct_map("Passed") += 1; rec.writeToFile(outList);
+          case Some(_) => null
+        }
+      })
+    ct_map
   }
 
 } 

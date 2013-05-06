@@ -32,7 +32,7 @@ import java.io.File
 
 case class FilterSolidArgs extends Arguments with Logging {
   val SP = " " * ("Usage: java -jar NGSTools.jar -T FilterReads ".length)
-  val required = List("incsfa", "incsq", "ocsfa", "ocsq")
+  val required = List('incsfa, 'incsq, 'ocsfa, 'ocsq)
   
   def mainUsage = List(
     "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM solid -I/-INPUT file.csfasta file.qual",
@@ -62,13 +62,13 @@ case class FilterSolidArgs extends Arguments with Logging {
       sys.exit(0)
     } else {
       mainUsage
-      log.error(throw new IllegalArgumentException("Missing Required Arguments!!")
+      log.error(throw new IllegalArgumentException("Missing Required Arguments!!"))
       sys.exit(1)
     }
   }
 
-  def parse(map: OptionMap, list: List[String]) =
-    args match {
+  def parse(map: OptionMap, list: List[String]): OptionMap =
+    list match {
       case Nil => checkRequired(map)
       case "-h" :: tail => mainVerboseUsage; sys.exit(0)
       case "--help" :: tail => mainVerboseUsage; sys.exit(0)
@@ -108,6 +108,8 @@ case class FilterSolidArgs extends Arguments with Logging {
 }
 
 object FilterSolidArgs {
+  type OptionMap = Map[Symbol, Any]
+ 
   def apply(args: List[String]): OptionMap = {
     val initSolid = new FilterSolidArgs
     initSolid.parse(Map(), args)

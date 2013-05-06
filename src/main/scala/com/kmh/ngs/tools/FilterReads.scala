@@ -28,10 +28,11 @@
  */
 
 package com.kmh.ngs.tools
-import com.kmh.ngs.readers._
+import com.kmh.ngs.readers.{ReadReader, CSFastaReader, FastqReader}
+import com.kmh.ngs.cmdline.{FilterSolidArgs, FilterSEIlluminaArgs}
 import com.kmh.ngs.filters._
 import com.kmh.ngs.formats._
-import java.io.File
+import java.io.{File, BufferedReader, OutputStreamWriter}
 import org.eintr.loglady.Logging
 import scala.collection.mutable
 
@@ -44,8 +45,9 @@ import scala.collection.mutable
 class FilterReads(val args: List[String]) extends NGSApp with Logging {
   def toolName = "'%s'".format(this.getClass()) 
   def description = "Filters NGS reads based on user inputs."
-  def mainUsage = List(description, 
-    "usage: java -jar NGSTools.jar -T FilterReads [-h/--help] -P/-PLATFORM [solid/SE_illumina/PE_illumina]\n").map(println(_))
+  def mainUsage = List(
+    "usage: java -jar NGSTools.jar -T FilterReads [-h/--help] " + 
+    "-P/-PLATFORM [solid/SE_illumina/PE_illumina]\n").map(println(_))
   def mainVerboseUsage = {
     mainUsage 
     List("Required Arguments:",
@@ -63,14 +65,30 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
    * @return platform of the reads
    * @return list of the remaining args
    */
-  private def platform: (String, List[String])={
-    this.args match {
+  private def platform: OptionMap = {
+    args match {
       case Nil => log.warn("Please select a platform\n"); mainUsage; sys.exit(1)
       case "-h" :: tail => mainVerboseUsage; sys.exit(0)
       case "--help" :: tail => mainVerboseUsage; sys.exit(0)
-      case "-P" :: value :: tail => (value, tail)
-      case "-PLATFORM" :: value :: tail => (value, tail)
-      case option :: tail =>
+      case "-P" :: value :: tail =>
+        value match {
+          case "solid" => FilterSolidArgs(tail) ++ Map('platform -> value)
+          case "SE_illumina" => FilterSEIlluminaArgs(tail) ++ Map('platform -> value)
+          case option =>
+            mainUsage;
+            log.error(throw new IllegalArgumentException("Unknown platform "+option));
+            sys.exit(1)
+        } 
+      case "-PLATFORM" :: value :: tail => 
+        value match {
+          case "solid" => FilterSolidArgs(tail) ++ Map('platform -> value)
+          case "SE_illumina" => FilterSEIlluminaArgs(tail) ++ Map('platform -> value)
+          case option =>
+            mainUsage;
+            log.error(throw new IllegalArgumentException("Unknown platform "+option));
+            sys.exit(1)
+        } 
+      case option =>
         mainUsage; 
 	log.error(throw new IllegalArgumentException(
           "Unknown Option; Must specify platform first"));
@@ -78,21 +96,68 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
     }
   } 
 
+  def loadReader(userOpts: OptionMap): (List[BufferedReader], List[OutputStreamWriter], ReadReader) = 
+    userOpts('platform) match {
+      case "solid" => {
+        val inputFileList = List(userOpts('incsfa).asInstanceOf[File], userOpts('incsq).asInstanceOf[File])
+        val outputFileList = List(userOpts('ocsfa).asInstanceOf[File], userOpts('ocsq).asInstanceOf[File])
+        inputFileList.map(ioInit.assertFileIsReadable(_))
+        val inputBufferList = inputFileList.map(ioInit.openFileForBufferedReading(_))
+        val outputBufferList = outputFileList.map(ioInit.openFileForWriting(_)) 
+        (inputBufferList, 
+         outputBufferList,
+         new CSFastaReader(inputBufferList(0), inputBufferList(1), inputFileList(0), inputFileList(1),
+		  if (userOpts.isDefinedAt('start)) Some(userOpts('start).asInstanceOf[Int]) else None,
+		  if (userOpts.isDefinedAt('end)) Some(userOpts('end).asInstanceOf[Int]) else None))
+      }
+      case "SE_illumina" => {
+        val inputFileList = List(userOpts('infq).asInstanceOf[File])
+        val outputFileList = List(userOpts('outfq).asInstanceOf[File])
+        inputFileList.map(ioInit.openFileForBufferedReading(_))
+        val inputBufferList = inputFileList.map(ioInit.openFileForBufferedReading(_))
+        val outputBufferList = outputFileList.map(ioInit.openFileForWriting(_)) 
+        (inputBufferList, 
+         outputBufferList,
+         new FastqReader(inputBufferList(0), inputFileList(0), 
+		 if (userOpts.isDefinedAt('start)) Some(userOpts('start).asInstanceOf[Int]) else None,
+		 if (userOpts.isDefinedAt('end)) Some(userOpts('end).asInstanceOf[Int]) else None))
+      }
+    }
+
   /**
    * The main function for filtering reads. 
    * 
    * @throws [[IllegalArgumentException]]
    */ 
   def run = {
-    val (pltfrm, otherArgs) = platform 
-    pltfrm match {
-      case "solid" => val userOpts = FilterSolidArgs(otherArgs)
-      case option =>  
-        mainUsage;
-        log.error(throw new IllegalArgumentException("Unknown platform "+pltfrm));
-        sys.exit(1) 
+    val userOpts = platform
+    val (inputBufferList, outputBufferList, readReader) = loadReader(userOpts)
+    val ct_map = SequenceFilters(readReader, userOpts, outputBufferList)
+    inputBufferList.map(ioInit.closer(_))
+    outputBufferList.map(ioInit.closer(_))
+    readReader match {
+      case cs: CSFastaReader =>
+        log.info(
+             "FILE=[%s, %s] ".format(userOpts('incsfa).asInstanceOf[File].getName(), 
+                                     userOpts('incsq).asInstanceOf[File].getName())+
+             "TOTAL="+ct_map("Total Reads")+" "+
+             "MISSING="+ct_map("Missing Base")+" "+
+             "LOWQ="+ct_map("Low Quality")+" "+
+             "HOMOPOLYMER="+ct_map("Homopolymer")+" "+
+             "PASSED="+ct_map("Passed")+" "+
+             "RATIO=%.2f".format(ct_map("Passed")/ct_map("Total Reads").toDouble))
+      case fq: FastqReader =>
+        log.info(
+             "FILE="+userOpts('infq).asInstanceOf[File].getName()+" "+
+             "TOTAL="+ct_map("Total Reads")+" "+
+             "MISSING="+ct_map("Missing Base")+" "+
+             "LOWQ="+ct_map("Low Quality")+" "+
+             "HOMOPOLYMER="+ct_map("Homopolymer")+" "+
+             "POLYA="+ct_map("Poly A")+" "+
+             "TOOSHORT="+ct_map("Too Short")+" "+
+             "PASSED="+ct_map("Passed")+" "+
+             "RATIO=%.2f".format(ct_map("Passed")/ct_map("Total Reads").toDouble))
     }
-    println(userOpts)
   } 
 
 }

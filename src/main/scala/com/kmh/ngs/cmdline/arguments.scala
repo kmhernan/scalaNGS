@@ -3,10 +3,9 @@ import java.io.File
 
 trait Arguments {
   type OptionMap = Map[Symbol, Any]
-  val required: List[String]
-  def mainUsage: String
-  def mainVerboseUsage: String
-  def getArg[T](x: T) = x
+  val required: List[Symbol]
+  def mainUsage: Unit 
+  def mainVerboseUsage: Unit 
   def parse(map: OptionMap, list: List[String]): OptionMap
   def checkRequired(map: OptionMap): OptionMap
 } 

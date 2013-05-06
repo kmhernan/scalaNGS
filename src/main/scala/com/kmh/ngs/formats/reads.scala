@@ -35,7 +35,14 @@ trait Read {
   val sequence: String
   val qualID: String
   val quality: String
-  def averageQuality(qualityOffset: Option[Int]): Double
+  def averageQuality(qualityOffset: Option[Int]): Double = 
+    qualityOffset match {
+      case Some(qualityOffset) =>
+        quality.foldLeft(0)(_+_.toInt - qualityOffset) / quality.length.toDouble
+      case None =>
+        quality.split(" ").foldLeft(0)(_+_.toInt) / (sequence.length - 1).toDouble
+    }
+  def writeToFile(ostream: List[OutputStreamWriter]): Unit
 }
 
 /**
@@ -47,14 +54,6 @@ case class CSFastaRecord(
 	val sequence: String,
 	val qualID: String,
     	val quality: String) extends Read {
-  /**
-   * Returns the average quality of the current record
-   *
-   * @return the average quality of the read.
-   */
-  override def averageQuality: Double = {
-    quality.split(" ").foldLeft(0)(_+_.toInt) / (sequence.length - 1).toDouble
-  }
 
   /**
    * Writes the current record to a file
@@ -62,44 +61,26 @@ case class CSFastaRecord(
    * @param ofa - file for csfasta reads
    * @param oq - file for quals
    */
-  def writeToFile(ofa: OutputStreamWriter, oq: OutputStreamWriter): Unit = {
-    ofa.write(seqID+"\n")
-    ofa.write(sequence+"\n")
-    oq.write(qualID+"\n")
-    oq.write(quality+"\n")
+  def writeToFile(ostream: List[OutputStreamWriter]): Unit = {
+    ostream(0).write(seqID+"\n"+sequence+"\n")
+    ostream(1).write(qualID+"\n"+quality+"\n")
   }
 
 }
 
 case class FastqRecord(
-        val seqHeader: String,
-        val seqLine: String,
-        val qualHeader: String,
-        val qualLine: String) extends Read {
-  /**
-   * Get the average Phred-scaled quality score based on the read offset.
-   *
-   * @param qv_offset the quality offset (33/64)
-   * @returns average quality [Double]
-   */
-  def averageQuality(qv_offset: Int): Double = {
-    qualLine.foldLeft(0)(_+_.toInt - qv_offset) / qualLine.length.toDouble
-  }
-
-  /**
-    * Provides the barcode of the current record.
-    *
-    * @return barcode the string representation of the barcode
-    */
-  def barcode: String = seqHeader.split(":").toList.reverse.head
+        val seqID: String,
+        val sequence: String,
+        val qualID: String,
+        val quality: String) extends Read {
 
   /**
     * Writes the current record to a file in Fastq format.
     *
     * @param ofq the output file represented as an [[java.io.OutputStreamWriter]]
     */
-  def writeToFile(ofq: OutputStreamWriter): Unit = {
-    ofq.write(this.seqHeader + "\n" + this.seqLine + "\n" +
-              this.qualHeader + "\n" + this.qualLine + "\n")
+  override def writeToFile(ostream: List[OutputStreamWriter]): Unit = {
+    ostream(0).write(seqID + "\n" + sequence + "\n" +
+              qualID + "\n" + quality + "\n")
   }
 }
