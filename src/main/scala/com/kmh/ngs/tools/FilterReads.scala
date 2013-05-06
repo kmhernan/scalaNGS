@@ -29,7 +29,7 @@
 
 package com.kmh.ngs.tools
 import com.kmh.ngs.readers.{ReadReader, CSFastaReader, FastqReader}
-import com.kmh.ngs.cmdline.{FilterSolidArgs, FilterSEIlluminaArgs}
+import com.kmh.ngs.cmdline.{FilterSolidArgs, FilterSEIlluminaArgs, FilterPEIlluminaArgs}
 import com.kmh.ngs.filters._
 import com.kmh.ngs.formats._
 import java.io.{File, BufferedReader, OutputStreamWriter}
@@ -74,6 +74,7 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
         value match {
           case "solid" => FilterSolidArgs(tail) ++ Map('platform -> value)
           case "SE_illumina" => FilterSEIlluminaArgs(tail) ++ Map('platform -> value)
+          case "PE_illumina" => FilterPEIlluminaArgs(tail) ++ Map('platform -> value)
           case option =>
             mainUsage;
             log.error(throw new IllegalArgumentException("Unknown platform "+option));
@@ -83,6 +84,7 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
         value match {
           case "solid" => FilterSolidArgs(tail) ++ Map('platform -> value)
           case "SE_illumina" => FilterSEIlluminaArgs(tail) ++ Map('platform -> value)
+          case "PE_illumina" => FilterPEIlluminaArgs(tail) ++ Map('platform -> value)
           case option =>
             mainUsage;
             log.error(throw new IllegalArgumentException("Unknown platform "+option));
@@ -131,7 +133,8 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
    */ 
   def run = {
     val userOpts = platform
-    val (inputBufferList, outputBufferList, readReader) = loadReader(userOpts)
+    println(userOpts)
+    /*val (inputBufferList, outputBufferList, readReader) = loadReader(userOpts)
     val ct_map = SequenceFilters(readReader, userOpts, outputBufferList)
     inputBufferList.map(ioInit.closer(_))
     outputBufferList.map(ioInit.closer(_))
@@ -157,7 +160,7 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
              "TOOSHORT="+ct_map("Too Short")+" "+
              "PASSED="+ct_map("Passed")+" "+
              "RATIO=%.2f".format(ct_map("Passed")/ct_map("Total Reads").toDouble))
-    }
+    }*/
   } 
 
 }
