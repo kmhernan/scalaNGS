@@ -229,7 +229,7 @@ object illuminaFilters extends Logging {
     }
   }
     
-  def main(args: List[String]): Unit = {
+  def main(args: List[String], isPaired: Boolean): Unit = {
     val userOpts = parseIllumina(Map(), args)
     val infq  = anyToFile(userOpts("infq"))
     val outfq = anyToFile(userOpts("outfq"))

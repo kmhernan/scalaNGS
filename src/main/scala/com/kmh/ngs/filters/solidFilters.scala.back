@@ -36,7 +36,8 @@ import java.io.{File, OutputStreamWriter, BufferedReader}
 import org.eintr.loglady.Logging
 import scala.collection.mutable.{Map, ListBuffer}
 
-class solidFilters extends Logging {
+/** Filters SOLiD reads. */
+object solidFilters extends Logging {
   type OptionMap = Map[String, Any]
   private var ct_map = 
     scala.collection.mutable.Map[String, Int](

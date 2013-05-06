@@ -30,6 +30,7 @@
 package com.kmh.ngs.tools
 import com.kmh.ngs.readers._
 import com.kmh.ngs.filters._
+import com.kmh.ngs.formats._
 import java.io.File
 import org.eintr.loglady.Logging
 import scala.collection.mutable
@@ -53,6 +54,7 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
     List("Optional Arguments:",
 	 "  -h/--help\tPrint this message and exit.\n").map(println(_))
   } 
+  val supportedPlatforms = List("solid", "SE_illumina", "PE_illumina")
 
   /**
    * Parses out the platform of the reads 
@@ -61,7 +63,7 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
    * @return platform of the reads
    * @return list of the remaining args
    */
-  private def platform : (String, List[String])={
+  private def platform: (String, List[String])={
     this.args match {
       case Nil => log.warn("Please select a platform\n"); mainUsage; sys.exit(1)
       case "-h" :: tail => mainVerboseUsage; sys.exit(0)
@@ -82,16 +84,15 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
    * @throws [[IllegalArgumentException]]
    */ 
   def run = {
-    val (pltfrm, otherArgs) = this.platform 
+    val (pltfrm, otherArgs) = platform 
     pltfrm match {
-      case "solid" => solidFilters.main(otherArgs)
-      case "SE_illumina" => illuminaFilters.main(otherArgs, paired=False)
-      case "PE_illumina" => illuminaFilters.main(otherArgs, paired=True)
-      case option => 
+      case "solid" => val userOpts = FilterSolidArgs(otherArgs)
+      case option =>  
         mainUsage;
-    	log.error(throw new IllegalArgumentException("Unknown platform "+option));
-	sys.exit(1); 
+        log.error(throw new IllegalArgumentException("Unknown platform "+pltfrm));
+        sys.exit(1) 
     }
+    println(userOpts)
   } 
 
 }
