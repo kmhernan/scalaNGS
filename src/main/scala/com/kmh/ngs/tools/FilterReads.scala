@@ -31,7 +31,7 @@ package com.kmh.ngs.tools
 import com.kmh.ngs.readers.{ReadReader, CSFastaReader, FastqReader, PEFastqReader}
 import com.kmh.ngs.cmdline.{FilterSolidArgs, FilterSEIlluminaArgs, FilterPEIlluminaArgs}
 import com.kmh.ngs.filters.SequenceFilters
-import com.kmh.ngs.formats.Reads
+import com.kmh.ngs.formats.Read
 import java.io.{File, BufferedReader, OutputStreamWriter}
 import org.eintr.loglady.Logging
 import scala.collection.mutable
@@ -47,14 +47,16 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
   def description = "Filters NGS reads based on user inputs."
   def mainUsage = List(
     "usage: java -jar NGSTools.jar -T FilterReads [-h/--help] " + 
-    "-P/-PLATFORM [solid/SE_illumina/PE_illumina]\n").map(println(_))
+    "-P/-PLATFORM {solid/SE_illumina/PE_illumina}\n").map(println(_))
   def mainVerboseUsage = {
     mainUsage 
-    List("Required Arguments:",
-         "  -P/-PLATFORM\tChoose solid (currently only SE reads), " +
-         "SE_illumina (single), or PE_illumina (paired) reads.\n").map(println(_))
-    List("Optional Arguments:",
-	 "  -h/--help\tPrint this message and exit.\n").map(println(_))
+    List(
+    "Required Arguments:",
+    "  -P/-PLATFORM\tChoose solid (currently only SE reads), " +
+    "SE_illumina (single), or PE_illumina (paired) reads.\n").map(println(_))
+    List(
+    "Optional Arguments:",
+    "  -h/--help\tPrint this message and exit.\n").map(println(_))
   } 
   val supportedPlatforms = List("solid", "SE_illumina", "PE_illumina")
 
@@ -98,6 +100,14 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
     }
   } 
 
+  /**
+   * Creates lists containing input and output streams and the instance of the read iterator.
+   *
+   * @param userOpts the map of the command-line arguments
+   * @return List[[java.io.BufferedReader] the list of input streams
+   * @return List[[java.io.OutputStreamWriter]] the list of output streams
+   * @return [[com.kmh.ngs.readers.ReadReader]] an instance of a reader for NGS sequence files.
+   */
   def loadReader(userOpts: OptionMap): (List[BufferedReader], List[OutputStreamWriter], ReadReader) = 
     userOpts('platform) match {
       case "solid" => {
@@ -170,6 +180,7 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
     outputBufferList.map(ioInit.closer(_))
     readReader match {
       case cs: CSFastaReader =>
+        val logCS = new StringBuilder()
         log.info(
              "FILE=[%s, %s] ".format(userOpts('incsfa).asInstanceOf[File].getName(), 
                                      userOpts('incsq).asInstanceOf[File].getName())+

@@ -118,25 +118,24 @@ object SequenceFilters {
     lazy val hpoly = userOpts('hpoly).asInstanceOf[Double]
     read match {
       case cs: CSFastaRecord =>
-        lazy val checkString = "0" * (cs.sequence.length * hpoly).toInt 
+        lazy val checkString = "0" * ((cs.sequence.length - 1) * hpoly).toInt
         if (cs.sequence.contains(checkString)) {
           ct_map("Homopolymer") += 1
           true
         } else false
       case fq: FastqRecord =>
-        if (basesArray.map(_*(fq.sequence.length*hpoly).toInt).forall(fq.sequence.contains(_) == false))
-          false
-        else {
-          ct_map("Homopolymer") += 1
-          true
+        basesArray.map(_*(fq.sequence.length*hpoly).toInt).find(fq.sequence.contains(_) == true) match {
+          case None => false
+          case Some(_) => ct_map("Homopolymer") += 1; true
         }
       case pefq: PEFastqRecord =>
-        if (basesArray.map(_*(pefq.sequence.length*hpoly).toInt).forall(pefq.sequence.contains(_) == false) &&
-            basesArray.map(_*(pefq.read2.sequence.length*hpoly).toInt).forall(pefq.read2.sequence.contains(_) == false))
-          false
-        else {
-          ct_map("Homopolymer") += 1
-          true
+        basesArray.map(_*(pefq.sequence.length*hpoly).toInt).find(pefq.sequence.contains(_) == true) match {
+          case None => 
+            basesArray.map(_*(pefq.read2.sequence.length*hpoly).toInt).find(pefq.read2.sequence.contains(_) == true) match {
+              case None => false
+              case Some(_) => ct_map("Homopolymer") += 1; true
+            }
+          case Some(_) => ct_map("Homopolymer") += 1; true
         }
     }
   }

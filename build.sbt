@@ -18,6 +18,8 @@ description := "A full suite of NGS tools"
 
 scalaVersion := "2.10.0"
 
+scalacOptions += "-deprecation"
+
 // Dependencies
 
 libraryDependencies ++= Seq(

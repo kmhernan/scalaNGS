@@ -30,7 +30,7 @@ package com.kmh.ngs.cmdline
 import org.eintr.loglady.Logging
 import java.io.File
 
-case class FilterPEIlluminaArgs extends Arguments with Logging {
+class FilterPEIlluminaArgs extends Arguments with Logging {
   val SP = " " * ("Usage: java -jar NGSTools.jar ".length)
   val basesArray = Array[String]("A", "C", "G", "T")
   val required = List[Symbol]()

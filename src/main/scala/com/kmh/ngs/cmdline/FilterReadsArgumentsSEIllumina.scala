@@ -30,8 +30,8 @@ package com.kmh.ngs.cmdline
 import org.eintr.loglady.Logging
 import java.io.File
 
-case class FilterSEIlluminaArgs extends Arguments with Logging {
-  val SP = " " * ("Usage: java -jar NGSTools.jar -T FilterReads ".length)
+class FilterSEIlluminaArgs extends Arguments with Logging {
+  val SP = " " * ("usage: java -jar NGSTools.jar ".length)
   val required = List('infq, 'outfq, 'offset)
   val basesArray = Array[String]("A", "C", "G", "T")
  

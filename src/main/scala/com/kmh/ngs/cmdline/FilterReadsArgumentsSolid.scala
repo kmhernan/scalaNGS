@@ -30,28 +30,28 @@ package com.kmh.ngs.cmdline
 import org.eintr.loglady.Logging
 import java.io.File
 
-case class FilterSolidArgs extends Arguments with Logging {
-  val SP = " " * ("Usage: java -jar NGSTools.jar -T FilterReads ".length)
+class FilterSolidArgs extends Arguments with Logging {
+  val SP = " " * ("Usage: java -jar NGSTools.jar ".length)
   val required = List('incsfa, 'incsq, 'ocsfa, 'ocsq)
   
   def mainUsage = List(
-    "usage: java -jar NGSTools.jar -T FilterReads",
-    SP+"-P/-PLATFORM solid -I/-INPUT file.csfasta file.qual",
-    SP+"-O/-OUTPUT file.csfasta file.qual [-START Int] [-END Int]",
-    SP+"[-HPOLY Double] [-MINQ Int] [-h/--help]\n").map(println(_))
+    "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM solid",
+    SP+"-I/-INPUT file.csfasta file.qual -O/-OUTPUT file.csfasta file.qual",
+    SP+"[-START Int] [-END Int] [-HPOLY Double] [-MINQ Int] [--MISSING] [-h/--help]\n").map(println(_))
 
   def mainVerboseUsage = {
     mainUsage
     List(
-      "Required Arguments:\n",
+      "Required Arguments:",
       "  -I/-INPUT"+"\t"+"Input raw read files: <file.csfasta> <file.qual>",
       "  -O/-OUTPUT"+"\t"+"Output filtered read files: <file.csfasta> <file.qual>\n").map(println(_))
     List(
-      "Optional Arguments:\n",
+      "Optional Arguments:",
       "  -START\t5' cut position (1-based index)",
       "  -END\t\t3' cut position (1-based index)",
       "  -HPOLY\tRelative length of repetitive base to consider a homopolymer.",
       "  -MINQ\tMinimum average quality score allowed.",
+      "  --MISSING\tTrims reads with missing data, required for mapping reads.",
       "  -h/--help\tPrint this message and exit.\n").map(println(_))
   }
 
@@ -63,7 +63,7 @@ case class FilterSolidArgs extends Arguments with Logging {
       sys.exit(0)
     } else {
       mainUsage
-      log.error(throw new IllegalArgumentException("Missing Required Arguments!!"))
+      log.error(throw new IllegalArgumentException("Missing Required Arguments!! [-INPUT, -OUTPUT]"))
       sys.exit(1)
     }
   }
@@ -101,13 +101,17 @@ case class FilterSolidArgs extends Arguments with Logging {
       case "-END" :: value :: tail => parse(map ++ Map('end ->value.toInt), tail)
       case "-HPOLY" :: value :: tail => parse(map ++ Map('hpoly ->value.toDouble), tail)
       case "-MINQ" :: value :: tail => parse(map ++ Map('minq ->value.toInt), tail)
-      case "--MISSING" :: value :: tail => parse(map ++ Map('missing ->true), tail)
+      case "--MISSING" :: tail => parse(map ++ Map('minN ->true), tail)
       case option => mainUsage; 
                      log.error(throw new IllegalArgumentException("Unknown Option "+option));
                      sys.exit(1)
     }
 }
 
+/**
+ * Companion object to return an OptionMap of command-line arguments
+ *
+ */
 object FilterSolidArgs {
   type OptionMap = Map[Symbol, Any]
  
