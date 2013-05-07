@@ -83,6 +83,7 @@ object NGSTools extends Logging {
   protected def loadTool(value: String, list: List[String]) = {
     value match {
       case "FilterReads" => new FilterReads(list)
+      case "ReadStatistics" => new ReadStatistics(list)
       case option => mainUsage;
 		     log.error(throw new IllegalArgumentException("Unknown Option "+option));
                      sys.exit(1);
