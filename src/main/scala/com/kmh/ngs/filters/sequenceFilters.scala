@@ -43,6 +43,12 @@ object SequenceFilters {
           "Missing Base"->0,
           "Passed"->0)
 
+  /**
+   * Checks if the read passes 'N' filters
+   *
+   * @param read an instance of [[com.kmh.ngs.formats.Read]]
+   * @param userOpts the map of command-line arguments
+   */ 
   def isMissing(read: Read, userOpts: OptionMap): Boolean = {
     read match {
       case cs: CSFastaRecord =>
@@ -68,6 +74,12 @@ object SequenceFilters {
     }
   }
 
+  /**
+   * Checks if the read passes quality filter 
+   *
+   * @param read an instance of [[com.kmh.ngs.formats.Read]]
+   * @param userOpts the map of command-line arguments
+   */ 
   def isLowQual(read: Read, userOpts: OptionMap): Boolean = {
     lazy val minq = userOpts('minq).asInstanceOf[Int]
     read match {
@@ -95,6 +107,12 @@ object SequenceFilters {
     }
   }
 
+  /**
+   * Checks if the read is a homopolymer 
+   *
+   * @param read an instance of [[com.kmh.ngs.formats.Read]]
+   * @param userOpts the map of command-line arguments
+   */ 
   def isHomopolymer(read: Read, userOpts: OptionMap): Boolean = {
     lazy val basesArray = Array[String]("A", "C", "G", "T")
     lazy val hpoly = userOpts('hpoly).asInstanceOf[Double]
@@ -123,6 +141,13 @@ object SequenceFilters {
     }
   }
 
+  /**
+   * Removes polyA tail by making a copy of the immutable case class instance 
+   *
+   * @param read an instance of [[com.kmh.ngs.formats.Read]]
+   * @param polyLimit the relative length of AAA tail to consider polyA
+   * @return a copy of the [[com.kmh.ngs.formats.Read]] instance with polyA tail removed 
+   */ 
   def removePolyA(rec: Read, polyLimit: Double): Read = rec match {
     case fq: FastqRecord => {
       lazy val paString = "A"*(fq.sequence.length*polyLimit).toInt
@@ -134,21 +159,27 @@ object SequenceFilters {
         fq.copy(sequence = fq.sequence.take(paIndex), quality = fq.quality.take(paIndex))
       }
     }
-    case fq: PEFastqRecord => {
-      lazy val paString = "A"*(fq.sequence.length*polyLimit).toInt
-      val paIndex = fq.sequence.indexOf(paString)
-      val pa2Index = fq.read2.sequence.indexOf(paString)
+    case pefq: PEFastqRecord => {
+      lazy val paString = "A"*(pefq.sequence.length*polyLimit).toInt
+      val paIndex = pefq.sequence.indexOf(paString)
+      val pa2Index = pefq.read2.sequence.indexOf(paString)
       if (paIndex < 0 && pa2Index < 0)
-        fq 
+        pefq 
       else {
         ct_map("Poly A") += 1
-        fq.copy(sequence = fq.sequence.take(paIndex), quality = fq.quality.take(paIndex), 
-		read2 = fq.read2.copy(sequence = fq.read2.sequence.take(pa2Index), 
-		quality = fq.read2.quality.take(pa2Index)))
+        pefq.copy(sequence = pefq.sequence.take(paIndex), quality = pefq.quality.take(paIndex), 
+		read2 = pefq.read2.copy(sequence = pefq.read2.sequence.take(pa2Index), 
+		quality = pefq.read2.quality.take(pa2Index)))
       }
     }
   }
 
+  /**
+   * Creates a list of tupled functions to apply to reads.
+   *
+   * @param userOpts the map of command-line arguments
+   * @return [[scala.collection.List[(([[com.kmh.ngs.formats.Read]], Map[Symbol, Any])) => Boolean]
+   */
   def loadFilters(userOpts: OptionMap): List[((Read, OptionMap)) => Boolean] = {
     val filterFunctions = new ListBuffer[((Read, OptionMap)) => Boolean]
     if (userOpts.isDefinedAt('minN))
@@ -162,19 +193,32 @@ object SequenceFilters {
 
   def apply(readReader: ReadReader, userOpts: OptionMap, outList: List[OutputStreamWriter]): Map[String, Int] = {
     val filterFunctions = loadFilters(userOpts)
-    if(userOpts.isDefinedAt('polyA))
+    if(userOpts.isDefinedAt('polyA)) {
+      lazy val paLimit = userOpts('polyA).asInstanceOf[Double]
+      lazy val szLimit = userOpts('minSize).asInstanceOf[Int]
       readReader.iter.foreach(rec => {
         ct_map("Total Reads") += 1
-        val recWithoutPoly = removePolyA(rec, userOpts('polyA).asInstanceOf[Double])
-        if (recWithoutPoly.sequence.length < userOpts('minSize).asInstanceOf[Int])
-          ct_map("Too Short") += 1
-        else
-          filterFunctions.find(_((recWithoutPoly, userOpts)) == true) match {
-            case None => ct_map("Passed") += 1; recWithoutPoly.writeToFile(outList);
-            case Some(_) => null
-          }
+        val recWithoutPoly = removePolyA(rec, paLimit)
+        recWithoutPoly match {
+          case fq: FastqRecord => 
+            if (fq.sequence.length < szLimit)
+              ct_map("Too Short") += 1
+            else
+              filterFunctions.find(_((fq, userOpts)) == true) match {
+                case None => ct_map("Passed") += 1; fq.writeToFile(outList);
+                case Some(_) => null
+              }
+          case pefq: PEFastqRecord => 
+            if (pefq.sequence.length < szLimit || pefq.read2.sequence.length < szLimit)
+              ct_map("Too Short") += 1
+            else
+              filterFunctions.find(_((pefq, userOpts)) == true) match {
+                case None => ct_map("Passed") += 1; pefq.writeToFile(outList);
+                case Some(_) => null
+              }
+        }
       })
-    else
+    } else
       readReader.iter.foreach(rec => {
         ct_map("Total Reads") += 1
         filterFunctions.find(_((rec, userOpts)) == true) match {

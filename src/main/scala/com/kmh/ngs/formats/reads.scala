@@ -103,7 +103,7 @@ case class PEFastqRecord(
     if (ostream.length == 2) {
       ostream(0).write(seqID + "\n" + sequence + "\n" +
                        qualID + "\n" + quality + "\n")
-      read2.writeToFile(ostream(1))
+      read2.writeToFile(List(ostream(1)))
     }
     else { 
       ostream(0).write(seqID + "\n" + sequence + "\n" +
