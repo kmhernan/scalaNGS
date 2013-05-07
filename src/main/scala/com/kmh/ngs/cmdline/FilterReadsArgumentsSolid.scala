@@ -35,7 +35,8 @@ case class FilterSolidArgs extends Arguments with Logging {
   val required = List('incsfa, 'incsq, 'ocsfa, 'ocsq)
   
   def mainUsage = List(
-    "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM solid -I/-INPUT file.csfasta file.qual",
+    "usage: java -jar NGSTools.jar -T FilterReads",
+    SP+"-P/-PLATFORM solid -I/-INPUT file.csfasta file.qual",
     SP+"-O/-OUTPUT file.csfasta file.qual [-START Int] [-END Int]",
     SP+"[-HPOLY Double] [-MINQ Int] [-h/--help]\n").map(println(_))
 

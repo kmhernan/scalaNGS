@@ -30,8 +30,8 @@
 package com.kmh.ngs.tools
 import com.kmh.ngs.readers.{ReadReader, CSFastaReader, FastqReader, PEFastqReader}
 import com.kmh.ngs.cmdline.{FilterSolidArgs, FilterSEIlluminaArgs, FilterPEIlluminaArgs}
-import com.kmh.ngs.filters._
-import com.kmh.ngs.formats._
+import com.kmh.ngs.filters.SequenceFilters
+import com.kmh.ngs.formats.Reads
 import java.io.{File, BufferedReader, OutputStreamWriter}
 import org.eintr.loglady.Logging
 import scala.collection.mutable
@@ -156,6 +156,7 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
         }
     }
   }
+
   /**
    * The main function for filtering reads. 
    * 

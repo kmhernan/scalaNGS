@@ -36,8 +36,8 @@ case class FilterSEIlluminaArgs extends Arguments with Logging {
   val basesArray = Array[String]("A", "C", "G", "T")
  
   def mainUsage = List(
-    "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM SE_illumina "+
-    "-I/-INPUT file.fastq -O/-OUTPUT file.fastq -QV-OFFSET {33,64}",
+    "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM SE_illumina ",
+    SP+"-I/-INPUT file.fastq -O/-OUTPUT file.fastq -QV-OFFSET {33,64}",
     SP+"[-START Int] [-END Int] [-HPOLY Double] [-MINQ Int] [-NMISSING Int]",
     SP+"[-POLYA Double Int] [-h/--help]\n").map(println(_))
 
