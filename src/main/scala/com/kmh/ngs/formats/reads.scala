@@ -35,13 +35,7 @@ trait Read {
   val sequence: String
   val qualID: String
   val quality: String
-  def averageQuality(qualityOffset: Option[Int]): Double = 
-    qualityOffset match {
-      case Some(qualityOffset) =>
-        quality.foldLeft(0)(_+_.toInt - qualityOffset) / quality.length.toDouble
-      case None =>
-        quality.split(" ").foldLeft(0)(_+_.toInt) / (sequence.length - 1).toDouble
-    }
+  def averageQuality(qualityOffset: Option[Int]): Double 
   def writeToFile(ostream: List[OutputStreamWriter]): Unit
 }
 
@@ -66,6 +60,8 @@ case class CSFastaRecord(
     ostream(1).write(qualID+"\n"+quality+"\n")
   }
 
+  def averageQuality(qualityOffset: Option[Int]): Double = 
+        quality.split(" ").foldLeft(0)(_+_.toInt) / (sequence.length - 1).toDouble
 }
 
 case class FastqRecord(
@@ -81,8 +77,15 @@ case class FastqRecord(
     */
   def writeToFile(ostream: List[OutputStreamWriter]): Unit = {
     ostream(0).write(seqID + "\n" + sequence + "\n" +
-              qualID + "\n" + quality + "\n")
+                     qualID + "\n" + quality + "\n")
   }
+
+  def averageQuality(qualityOffset: Option[Int]): Double = 
+    qualityOffset match {
+      case Some(qualityOffset) => 
+        quality.foldLeft(0)(_+_.toInt - qualityOffset) / quality.length.toDouble
+      case None => throw new Exception("Should never happen")
+    }
 }
 
 case class PEFastqRecord(
@@ -90,10 +93,7 @@ case class PEFastqRecord(
         val sequence: String,
         val qualID: String,
         val quality: String,
-  	val seqIDR: String,
-	val sequenceR: String,
-	val qualIDR: String,
-	val qualityR: String) extends Read {
+	val read2: FastqRecord) extends Read {
   /**
     * Writes the current record to a file in Fastq format.
     *
@@ -103,15 +103,19 @@ case class PEFastqRecord(
     if (ostream.length == 2) {
       ostream(0).write(seqID + "\n" + sequence + "\n" +
                        qualID + "\n" + quality + "\n")
-      ostream(1).write(seqIDR + "\n" + sequenceR + "\n" +
-                       qualIDR + "\n" + qualityR + "\n")
+      read2.writeToFile(ostream(1))
     }
     else { 
       ostream(0).write(seqID + "\n" + sequence + "\n" +
                        qualID + "\n" + quality + "\n" +
-                       seqIDR + "\n" + sequenceR + "\n" +
-                       qualIDR + "\n" + qualityR + "\n")
+                       read2.seqID + "\n" + read2.sequence + "\n" +
+                       read2.qualID + "\n" + read2.quality + "\n")
     }
   }
 
+  def averageQuality(qualityOffset: Option[Int]): Double = 
+    qualityOffset match {
+      case Some(qualityOffset) => quality.foldLeft(0)(_+_.toInt - qualityOffset) / quality.length.toDouble
+      case None => throw new Exception("Should never happen")
+    }
 }  

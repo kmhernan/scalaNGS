@@ -60,7 +60,7 @@ object SequenceFilters {
       case pefq: PEFastqRecord => {
         lazy val minN = userOpts('minN).asInstanceOf[Int]
         if (pefq.sequence.count(_ == 'N') > minN || 
-            pefq.sequenceR.count(_ == 'N') > minN) { 
+            pefq.read2.sequence.count(_ == 'N') > minN) { 
           ct_map("Missing Base") += 1
           true
         } else false
@@ -86,7 +86,8 @@ object SequenceFilters {
       }
       case pefq: PEFastqRecord => {
         lazy val offset = userOpts('offset).asInstanceOf[Int]
-        if (pefq.averageQuality(Some(offset)) < minq) {
+        if (pefq.averageQuality(Some(offset)) < minq ||
+            pefq.read2.averageQuality(Some(offset)) < minq) {
           ct_map("Low Quality") += 1
           true
         } else false
@@ -113,7 +114,7 @@ object SequenceFilters {
         }
       case pefq: PEFastqRecord =>
         if (basesArray.map(_*(pefq.sequence.length*hpoly).toInt).forall(pefq.sequence.contains(_) == false) &&
-            basesArray.map(_*(pefq.sequenceR.length*hpoly).toInt).forall(pefq.sequenceR.contains(_) == false))
+            basesArray.map(_*(pefq.read2.sequence.length*hpoly).toInt).forall(pefq.read2.sequence.contains(_) == false))
           false
         else {
           ct_map("Homopolymer") += 1
@@ -131,6 +132,19 @@ object SequenceFilters {
       else {
         ct_map("Poly A") += 1
         fq.copy(sequence = fq.sequence.take(paIndex), quality = fq.quality.take(paIndex))
+      }
+    }
+    case fq: PEFastqRecord => {
+      lazy val paString = "A"*(fq.sequence.length*polyLimit).toInt
+      val paIndex = fq.sequence.indexOf(paString)
+      val pa2Index = fq.read2.sequence.indexOf(paString)
+      if (paIndex < 0 && pa2Index < 0)
+        fq 
+      else {
+        ct_map("Poly A") += 1
+        fq.copy(sequence = fq.sequence.take(paIndex), quality = fq.quality.take(paIndex), 
+		read2 = fq.read2.copy(sequence = fq.read2.sequence.take(pa2Index), 
+		quality = fq.read2.quality.take(pa2Index)))
       }
     }
   }

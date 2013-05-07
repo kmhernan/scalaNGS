@@ -148,7 +148,7 @@ case class PEFastqReader(
 
           // Create instance of FastqRecord 
           new PEFastqRecord(r1Header, r1Line, q1Header, q1Line,
-		            r2Header, r2Line, q2Header, q2Line)
+		            new FastqRecord(r2Header, r2Line, q2Header, q2Line))
         }
         catch {
           case ioe: IOException => 
@@ -201,7 +201,7 @@ case class PEFastqReader(
 
           // Create instance of FastqRecord 
           new PEFastqRecord(r1Header, r1Line, q1Header, q1Line,
-		            r2Header, r2Line, q2Header, q2Line)
+		            new FastqRecord(r2Header, r2Line, q2Header, q2Line))
         }
         catch {
           case ioe: IOException => 
