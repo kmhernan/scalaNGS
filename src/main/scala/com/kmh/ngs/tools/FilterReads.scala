@@ -28,7 +28,7 @@
  */
 
 package com.kmh.ngs.tools
-import com.kmh.ngs.readers.{ReadReader, CSFastaReader, FastqReader}
+import com.kmh.ngs.readers.{ReadReader, CSFastaReader, FastqReader, PEFastqReader}
 import com.kmh.ngs.cmdline.{FilterSolidArgs, FilterSEIlluminaArgs, FilterPEIlluminaArgs}
 import com.kmh.ngs.filters._
 import com.kmh.ngs.formats._
@@ -124,8 +124,38 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
 		 if (userOpts.isDefinedAt('start)) Some(userOpts('start).asInstanceOf[Int]) else None,
 		 if (userOpts.isDefinedAt('end)) Some(userOpts('end).asInstanceOf[Int]) else None))
       }
+      case "PE_illumina" => {
+        if (userOpts.isDefinedAt('inInter)) {
+          val inputFileList = List(userOpts('inInter).asInstanceOf[File])
+          val outputFileList = 
+            if (userOpts.isDefinedAt('outInter)) List(userOpts('outInter).asInstanceOf[File])
+            else List(userOpts('outR1), userOpts('outR2)).map(_.asInstanceOf[File])
+          inputFileList.map(ioInit.openFileForBufferedReading(_))
+          val inputBufferList = inputFileList.map(ioInit.openFileForBufferedReading(_))
+          val outputBufferList = outputFileList.map(ioInit.openFileForWriting(_)) 
+          (inputBufferList, 
+           outputBufferList,
+           new PEFastqReader(inputBufferList(0), None, 
+                 inputFileList(0), None,
+		 if (userOpts.isDefinedAt('start)) Some(userOpts('start).asInstanceOf[Int]) else None,
+		 if (userOpts.isDefinedAt('end)) Some(userOpts('end).asInstanceOf[Int]) else None))
+        } else {
+          val inputFileList = List(userOpts('inR1), userOpts('inR2)).map(_.asInstanceOf[File])
+          val outputFileList = 
+            if (userOpts.isDefinedAt('outInter)) List(userOpts('outInter).asInstanceOf[File])
+            else List(userOpts('outR1), userOpts('outR2)).map(_.asInstanceOf[File])
+          inputFileList.map(ioInit.openFileForBufferedReading(_))
+          val inputBufferList = inputFileList.map(ioInit.openFileForBufferedReading(_))
+          val outputBufferList = outputFileList.map(ioInit.openFileForWriting(_)) 
+          (inputBufferList, 
+           outputBufferList,
+           new PEFastqReader(inputBufferList(0), Some(inputBufferList(1)), 
+                 inputFileList(0), Some(inputFileList(1)), 
+		 if (userOpts.isDefinedAt('start)) Some(userOpts('start).asInstanceOf[Int]) else None,
+		 if (userOpts.isDefinedAt('end)) Some(userOpts('end).asInstanceOf[Int]) else None))
+        }
     }
-
+  }
   /**
    * The main function for filtering reads. 
    * 
@@ -133,8 +163,7 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
    */ 
   def run = {
     val userOpts = platform
-    println(userOpts)
-    /*val (inputBufferList, outputBufferList, readReader) = loadReader(userOpts)
+    val (inputBufferList, outputBufferList, readReader) = loadReader(userOpts)
     val ct_map = SequenceFilters(readReader, userOpts, outputBufferList)
     inputBufferList.map(ioInit.closer(_))
     outputBufferList.map(ioInit.closer(_))
@@ -160,7 +189,31 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
              "TOOSHORT="+ct_map("Too Short")+" "+
              "PASSED="+ct_map("Passed")+" "+
              "RATIO=%.2f".format(ct_map("Passed")/ct_map("Total Reads").toDouble))
-    }*/
+      case pefq: PEFastqReader =>
+        if (userOpts.isDefinedAt('inInter))
+          log.info(
+               "FILE="+userOpts('inInter).asInstanceOf[File].getName()+" "+
+               "TOTAL="+ct_map("Total Reads")+" "+
+               "MISSING="+ct_map("Missing Base")+" "+
+               "LOWQ="+ct_map("Low Quality")+" "+
+               "HOMOPOLYMER="+ct_map("Homopolymer")+" "+
+               "POLYA="+ct_map("Poly A")+" "+
+               "TOOSHORT="+ct_map("Too Short")+" "+
+               "PASSED="+ct_map("Passed")+" "+
+               "RATIO=%.2f".format(ct_map("Passed")/ct_map("Total Reads").toDouble))
+        else
+          log.info(
+               "FILE=[%s, %s] ".format(userOpts('inR1).asInstanceOf[File].getName(), 
+                                       userOpts('inR2).asInstanceOf[File].getName())+
+               "TOTAL="+ct_map("Total Reads")+" "+
+               "MISSING="+ct_map("Missing Base")+" "+
+               "LOWQ="+ct_map("Low Quality")+" "+
+               "HOMOPOLYMER="+ct_map("Homopolymer")+" "+
+               "POLYA="+ct_map("Poly A")+" "+
+               "TOOSHORT="+ct_map("Too Short")+" "+
+               "PASSED="+ct_map("Passed")+" "+
+               "RATIO=%.2f".format(ct_map("Passed")/ct_map("Total Reads").toDouble))
+    }
   } 
 
 }

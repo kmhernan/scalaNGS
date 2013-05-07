@@ -31,12 +31,12 @@ import org.eintr.loglady.Logging
 import java.io.File
 
 case class FilterPEIlluminaArgs extends Arguments with Logging {
-  val SP = " " * ("Usage: java -jar NGSTools.jar -T FilterReads ".length)
+  val SP = " " * ("Usage: java -jar NGSTools.jar ".length)
   val basesArray = Array[String]("A", "C", "G", "T")
   val required = List[Symbol]()
   def mainUsage = List(
-    "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM PE_illumina "+
-    "{-R1/-READ1 file_R1.fastq -R2/-READ2 file_R2.fastq | -INTER file_R1_R2.fastq} ",
+    "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM PE_illumina ",
+    SP+"{-R1/-READ1 file_R1.fastq -R2/-READ2 file_R2.fastq | -INTER file_R1_R2.fastq} ",
     SP+"{-O1/-OUTREAD1 file_R1.fastq -O2/-OUTREAD2 file_R2.fastq | -OUT-INTER file_R1_R2.fastq}",
     SP+"-QV-OFFSET {33, 64} [-START Int] [-END Int] [-HPOLY Double] [-MINQ Int] [-NMISSING Int]",
     SP+"[-POLYA Double Int] [-h/--help]\n").map(println(_))
@@ -47,13 +47,13 @@ case class FilterPEIlluminaArgs extends Arguments with Logging {
       "Supports both separated and interleaved paired-end Fastq files.",
       "If input Fastq files are separated (mate-pairs must be sorted in same order):",
       "  -R1/-READ1\tInput raw fastq file for first paired-end: <file_R1.fastq> or <file_R1.fastq.gz>",
-      "  -R2/-READ2\tInput raw fastq file for second paired-end: <file_R2.fastq> or <file_R2.fastq.gz>",
+      "  -R2/-READ2\tInput raw fastq file for second paired-end: <file_R2.fastq> or <file_R2.fastq.gz>\n",
       "If input Fastq file is interleaved (pair 1 must always be followed by its mate-pair 2):",
-      "  -INTERLEAVED\tIniput raw fastq file containing both pairs: <file_R1_R2.fastq> or <file_R1_R2.fastq.gz>",
+      "  -INTER\tInput raw fastq file containing both pairs: <file_R1_R2.fastq> or <file_R1_R2.fastq.gz>\n",
       "Regardless of input format, reads can be written to either separated or interleaved fastq files:",
       "  -O1/-OUTPUT1\tOutput separated fastq file for first paired-end: <file_R1.fastq>",
       "  -O2/-OUTPUT2\tOutput separated fastq file for second paired-end: <file_R2.fastq>",
-      "  -OUT-INTERLEAVED\tOutput interleaved fastq file: <file_R1_R2.fastq>\n",
+      "  -OUT-INTER\tOutput interleaved fastq file: <file_R1_R2.fastq>\n",
       "  -QV-OFFSET\tPhred-scaled offset [33, 64]\n").map(println(_))
     List("Optional Arguments:",
       "  -START\t5' cut position (1-based index)",
@@ -73,6 +73,8 @@ case class FilterPEIlluminaArgs extends Arguments with Logging {
       if (map.isDefinedAt('inR1) && map.isDefinedAt('inR2) && !map.isDefinedAt('inInter)) {
         if (map.isDefinedAt('outR1) && map.isDefinedAt('outR2) && !map.isDefinedAt('outInter)) 
           map
+        else if (!map.isDefinedAt('outR1) && !map.isDefinedAt('outR2) && map.isDefinedAt('outInter)) 
+          map
         else {
           mainUsage
           log.error(throw new IllegalArgumentException("Can't output both interleaved and separated"))
@@ -81,6 +83,8 @@ case class FilterPEIlluminaArgs extends Arguments with Logging {
       }
       else if (map.isDefinedAt('inInter) && !map.isDefinedAt('inR1) && !map.isDefinedAt('inR2)) { 
         if (map.isDefinedAt('outInter) && !map.isDefinedAt('outR1) && !map.isDefinedAt('outR2))
+          map
+        else if (!map.isDefinedAt('outInter) && map.isDefinedAt('outR1) && map.isDefinedAt('outR2))
           map
         else {
           mainUsage
@@ -116,8 +120,8 @@ case class FilterPEIlluminaArgs extends Arguments with Logging {
       case "-OUTPUT1" :: file :: tail => parse(map ++ Map('outR1-> new File(file)), tail)
       case "-O2" :: file :: tail => parse(map ++ Map('outR2-> new File(file)), tail)
       case "-OUTPUT2" :: file :: tail => parse(map ++ Map('outR2-> new File(file)), tail)
-      case "-INTERLEAVED" :: file :: tail => parse(map ++ Map('inInter-> new File(file)), tail)
-      case "-OUT-INTERLEAVED" :: file :: tail => parse(map ++ Map('outInter-> new File(file)), tail)
+      case "-INTER" :: file :: tail => parse(map ++ Map('inInter-> new File(file)), tail)
+      case "-OUT-INTER" :: file :: tail => parse(map ++ Map('outInter-> new File(file)), tail)
       case "-QV-OFFSET" :: value :: tail => parse(map ++ Map('offset->value.toInt), tail)
       case "-START" :: value :: tail => parse(map ++ Map('start->value.toInt), tail)
       case "-END" :: value :: tail => parse(map ++ Map('end->value.toInt), tail)

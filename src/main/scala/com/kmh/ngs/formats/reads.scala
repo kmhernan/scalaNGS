@@ -79,8 +79,39 @@ case class FastqRecord(
     *
     * @param ofq the output file represented as an [[java.io.OutputStreamWriter]]
     */
-  override def writeToFile(ostream: List[OutputStreamWriter]): Unit = {
+  def writeToFile(ostream: List[OutputStreamWriter]): Unit = {
     ostream(0).write(seqID + "\n" + sequence + "\n" +
               qualID + "\n" + quality + "\n")
   }
 }
+
+case class PEFastqRecord(
+        val seqID: String,
+        val sequence: String,
+        val qualID: String,
+        val quality: String,
+  	val seqIDR: String,
+	val sequenceR: String,
+	val qualIDR: String,
+	val qualityR: String) extends Read {
+  /**
+    * Writes the current record to a file in Fastq format.
+    *
+    * @param ofq the output file represented as an [[java.io.OutputStreamWriter]]
+    */
+  def writeToFile(ostream: List[OutputStreamWriter]): Unit = {
+    if (ostream.length == 2) {
+      ostream(0).write(seqID + "\n" + sequence + "\n" +
+                       qualID + "\n" + quality + "\n")
+      ostream(1).write(seqIDR + "\n" + sequenceR + "\n" +
+                       qualIDR + "\n" + qualityR + "\n")
+    }
+    else { 
+      ostream(0).write(seqID + "\n" + sequence + "\n" +
+                       qualID + "\n" + quality + "\n" +
+                       seqIDR + "\n" + sequenceR + "\n" +
+                       qualIDR + "\n" + qualityR + "\n")
+    }
+  }
+
+}  

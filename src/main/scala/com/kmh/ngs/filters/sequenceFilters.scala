@@ -27,7 +27,7 @@
  */
 
 package com.kmh.ngs.filters
-import com.kmh.ngs.formats.{Read, CSFastaRecord, FastqRecord}
+import com.kmh.ngs.formats.{Read, CSFastaRecord, FastqRecord, PEFastqRecord}
 import com.kmh.ngs.readers.ReadReader
 import java.io.OutputStreamWriter
 import scala.collection.mutable.{ListBuffer, Map}
@@ -50,24 +50,43 @@ object SequenceFilters {
           ct_map("Missing Base") += 1
           true
         } else false
-      case fq: FastqRecord =>
-        if (fq.sequence.count(_ == 'N') > userOpts('minN).asInstanceOf[Int]) {
+      case fq: FastqRecord => {
+        lazy val minN = userOpts('minN).asInstanceOf[Int]
+        if (fq.sequence.count(_ == 'N') > minN) {
           ct_map("Missing Base") += 1
           true
         } else false
+      }
+      case pefq: PEFastqRecord => {
+        lazy val minN = userOpts('minN).asInstanceOf[Int]
+        if (pefq.sequence.count(_ == 'N') > minN || 
+            pefq.sequenceR.count(_ == 'N') > minN) { 
+          ct_map("Missing Base") += 1
+          true
+        } else false
+      }
     }
   }
 
   def isLowQual(read: Read, userOpts: OptionMap): Boolean = {
+    lazy val minq = userOpts('minq).asInstanceOf[Int]
     read match {
       case cs: CSFastaRecord => {
-        if (cs.averageQuality(None) < userOpts('minq).asInstanceOf[Int]) {
+        if (cs.averageQuality(None) < minq) { 
           ct_map("Low Quality") += 1
           true
         } else false
       }
       case fq: FastqRecord => {
-        if (fq.averageQuality(Some(userOpts('offset).asInstanceOf[Int])) < userOpts('minq).asInstanceOf[Int]) {
+        lazy val offset = userOpts('offset).asInstanceOf[Int]
+        if (fq.averageQuality(Some(offset)) < minq) {
+          ct_map("Low Quality") += 1
+          true
+        } else false
+      }
+      case pefq: PEFastqRecord => {
+        lazy val offset = userOpts('offset).asInstanceOf[Int]
+        if (pefq.averageQuality(Some(offset)) < minq) {
           ct_map("Low Quality") += 1
           true
         } else false
@@ -76,16 +95,25 @@ object SequenceFilters {
   }
 
   def isHomopolymer(read: Read, userOpts: OptionMap): Boolean = {
+    lazy val basesArray = Array[String]("A", "C", "G", "T")
+    lazy val hpoly = userOpts('hpoly).asInstanceOf[Double]
     read match {
       case cs: CSFastaRecord =>
-        lazy val checkString = "0" * (cs.sequence.length * userOpts('hpoly).asInstanceOf[Double]).toInt
+        lazy val checkString = "0" * (cs.sequence.length * hpoly).toInt 
         if (cs.sequence.contains(checkString)) {
           ct_map("Homopolymer") += 1
           true
         } else false
       case fq: FastqRecord =>
-        lazy val basesArray = Array[String]("A", "C", "G", "T")
-        if (basesArray.map(_*(fq.sequence.length*userOpts('hpoly).asInstanceOf[Double]).toInt).forall(fq.sequence.contains(_) == false))
+        if (basesArray.map(_*(fq.sequence.length*hpoly).toInt).forall(fq.sequence.contains(_) == false))
+          false
+        else {
+          ct_map("Homopolymer") += 1
+          true
+        }
+      case pefq: PEFastqRecord =>
+        if (basesArray.map(_*(pefq.sequence.length*hpoly).toInt).forall(pefq.sequence.contains(_) == false) &&
+            basesArray.map(_*(pefq.sequenceR.length*hpoly).toInt).forall(pefq.sequenceR.contains(_) == false))
           false
         else {
           ct_map("Homopolymer") += 1
@@ -132,7 +160,7 @@ object SequenceFilters {
             case Some(_) => null
           }
       })
-    else 
+    else
       readReader.iter.foreach(rec => {
         ct_map("Total Reads") += 1
         filterFunctions.find(_((rec, userOpts)) == true) match {
