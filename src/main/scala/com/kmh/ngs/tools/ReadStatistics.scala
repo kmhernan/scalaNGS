@@ -35,7 +35,7 @@ import com.kmh.ngs.formats.Read
 import java.io.{File, BufferedReader, OutputStreamWriter}
 import org.eintr.loglady.Logging
 import scala.collection.mutable
-import com.kmh.ngs.statistics.qualMatrix
+import com.kmh.ngs.statistics.ReadStatsByIndex
 
 /**
  * Creates summary statistics and figures for NGS sequence data. 
@@ -127,7 +127,7 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
   def run = {
     val userOpts = platform
     val (inputBufferList, readReader) = loadReader(userOpts)
-    qualMatrix(readReader, userOpts('offset).asInstanceOf[Int]) 
+    ReadStatsByIndex(readReader, userOpts('offset).asInstanceOf[Int]) 
     inputBufferList.map(ioInit.closer(_))
     //outputBufferList.map(ioInit.closer(_))
   } 
