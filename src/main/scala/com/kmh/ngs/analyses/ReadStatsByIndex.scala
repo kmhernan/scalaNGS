@@ -1,4 +1,4 @@
-package com.kmh.ngs.statistics
+package com.kmh.ngs.analyses
 import com.kmh.ngs.readers.ReadReader
 import org.eintr.loglady.Logging
 
@@ -8,32 +8,51 @@ class ReadIndexData {
   var counts = 0
   var max = 0
   var min = 0
+
   lazy val sum: Int = quality_container.view.zipWithIndex.foldLeft(0)((r,c) => r + c._1*c._2)
+
   lazy val q1: Int = {
-    var pos = 0; var n = counts/4
+    var pos = 0; val n = counts/4; var sum = 0
+    while (sum < n && quality_container(pos) <= n) {
+      pos += 1
+      sum += quality_container(pos)
+    }
+    pos
+    /*var pos = 0; var n = counts/4
     while (n > 0 && quality_container(pos) <= n) {
       n -= quality_container(pos)
       pos += 1
       while (quality_container(pos) == 0) pos += 1
-    }; pos
+    }; pos*/
   }
 
   lazy val q3: Int = {
-    var pos = 0; var n = counts * 3 / 4
+    var pos = 0; val n = counts * 3 / 4; var sum = 0
+    while (sum < n && quality_container(pos) <= n) {
+      pos += 1
+      sum += quality_container(pos)
+    }
+    pos
+    /*var pos = 0; var n = counts * 3 / 4
     while (n > 0 && quality_container(pos) <= n) {
       n -= quality_container(pos)
       pos += 1
       while (quality_container(pos) == 0) pos += 1
-    }; pos
+    }; pos*/
   }
 
   lazy val med: Int = {
-    var pos = 0; var n = counts/2
-    while (n > 0 && quality_container(pos) <= n) {
+    var pos = 0; val n = counts/2; var sum = 0
+    while (sum < n && quality_container(pos) <= n) {
+      pos += 1
+      sum += quality_container(pos)
+    }
+    pos
+    /*while (n > 0 && quality_container(pos) <= n) {
       n -= quality_container(pos)
       pos += 1
       while (quality_container(pos) == 0) pos += 1
-    }; pos
+    }; pos*/
   }
 
   def addQ(i: Int): Unit = {
@@ -58,15 +77,11 @@ class ReadIndexData {
  *
  */
 object ReadStatsByIndex extends Logging {
-  val ReadStatsHeader = Array[String]("Index", "N", "MinQ", "MaxQ", "SumQ", "MeanQ", "Q1", "Median", "Q3", "IQR",
-				      "A_ct", "C_ct", "G_ct", "T_ct", "N_ct").mkString("\t")
-  var totalCounts = 0 
   val baseToInt = Array[Char]('A', 'C', 'G', 'T', 'N') 
   val readArray = new scala.collection.mutable.ArrayBuffer[ReadIndexData]
 
-  def apply(rr: ReadReader, offset: Int): Unit = {
+  def apply(rr: ReadReader, offset: Int): Array[ReadIndexData] = {
     rr.iter.foreach(rec => {
-      totalCounts += 1
       rec.quality.map(_.toInt-offset).view.zipWithIndex.foreach{
         case(v,i) => { 
           if (readArray.isEmpty)
@@ -78,14 +93,7 @@ object ReadStatsByIndex extends Logging {
         }
       }
     })
-
-    println(ReadStatsHeader)
-    readArray.toArray.view.zipWithIndex.foreach {
-      case(v, i) => { 
-        println("%s\t%s\t%s\t%s\t%s\t".format(i, v.counts, v.min, v.max, v.sum) +
-                "%2.2f\t%s\t%s\t%s\t%s\t".format(v.mean, v.q1, v.med, v.q3, v.iqr) +
-                "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN))
-      }
-    }
+    readArray.toArray
   } 
+
 }

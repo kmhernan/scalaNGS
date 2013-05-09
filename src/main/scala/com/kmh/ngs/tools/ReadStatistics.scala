@@ -30,61 +30,100 @@
 package com.kmh.ngs.tools
 
 import com.kmh.ngs.readers.{ReadReader, FastqReader}
-import com.kmh.ngs.cmdline.ReadStatisticsArgs
 import com.kmh.ngs.formats.Read
+import com.kmh.ngs.analyses.{ReadStatsByIndex, ReadIndexData}
+
 import java.io.{File, BufferedReader, OutputStreamWriter}
-import org.eintr.loglady.Logging
 import scala.collection.mutable
-import com.kmh.ngs.statistics.ReadStatsByIndex
+
+import org.eintr.loglady.Logging
+
+
 
 /**
- * Creates summary statistics and figures for NGS sequence data. 
+ * Creates summary statistics and figures for NGS sequence data.
+ * This application was motivated by my aggravation with FASTX and
+ * adapts similar code algorithms <http://hannonlab.cshl.edu/fastx_toolkit/> 
  * 
+ * @constructor args a list of command-line arguments
  */
 class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
   def toolName = "'%s'".format(this.getClass()) 
-  def description = "Calculates summary statistics for NGS reads."
+  def description = "Calculates summary statistics for NGS reads "+
+                    "and plots quality/base distribution. [GNUplot must be installed]."
   val SP = " " * ("usage: java -jar NGSTools.jar ".length)
-  val required = List('infq, 'ofil, 'offset)
 
-  def mainUsage = List(
-    "usage: java -jar NGSTools.jar -T FilterReads -I/-INPUT file.fastq",
-    SP+"-O/-OUTPUT file.fastq -QV-OFFSET {33,64} [-h/--help]\n").map(println(_))
-
-  def mainVerboseUsage = {
-    mainUsage
-    List("Required Arguments:",
-      "  -I/-INPUT\tInput raw read files: <file.fastq> or <file.fastq.gz>",
-      "  -O/-OUTPUT\tOutput stats file: <file.txt>",
-      "  -QV-OFFSET\tPhred-scaled offset [33, 64]\n").map(println(_))
-    List("Optional Arguments:",
-      "  -plot\tIf you also want to produce a plot, place file prefix here (no extension)",
-      "       \tRequires GNUplot!",
-      "  -h/--help\tPrint this message and exit.\n").map(println(_))
+  def checkMutuallyExclusiveArgs(map: OptionMap): Boolean = { 
+    if (map.isDefinedAt('infq) && !map.isDefinedAt('instat)) true
+    else if (map.isDefinedAt('instat) && !map.isDefinedAt('ostat)) true
+    else if (map.isDefinedAt('instat) && map.isDefinedAt('offset)) {
+      log.warn("Offset is meaningless when input is a stats file...")
+      true
+    } 
+    else false
   }
 
   def checkRequired(map: OptionMap): OptionMap = {
-    if (required.forall(x => map.isDefinedAt(x)))
-      map
-    else if (map.isEmpty) {
+    if (map.isEmpty) {
       mainUsage
       sys.exit(0)
-    } else {
+    }
+    else if (checkMutuallyExclusiveArgs(map)) {
+      if (map.isDefinedAt('infq) && !map.isDefinedAt('offset)) {
+        mainUsage
+        log.error(throw new IllegalArgumentException("When input is a Fastq file, you must declare the offset!!"))
+        sys.exit(1)
+      }
+      else if (map.isDefinedAt('instat) && !map.isDefinedAt('qualPlot) && !map.isDefinedAt('basePlot)) {
+        mainUsage
+        log.error(throw new IllegalArgumentException("When input is a stats file, you must declare plot options!!"))
+        sys.exit(1)
+      }
+      else
+        map
+    } 
+    else {
       mainUsage
-      log.error(throw new IllegalArgumentException("Missing Required Arguments!!"))
+      log.error(throw new IllegalArgumentException("Mutally Exclusive Arguments error!!"))
       sys.exit(1)
     }
+  }
+
+  def mainUsage = List(
+    "usage: java -jar NGSTools.jar -T FilterReads {-INFQ file.fastq -QV-OFFSET [33,64] [-OSTAT file.txt] | -INSTAT file.txt}",
+    SP+"[-BASEPLOT <file prefix>] [-QUALPLOT <file prefix>] [-h/--help]\n").map(println(_))
+
+  def mainVerboseUsage = {
+    mainUsage
+    List("Mutually exclusive arguments:",
+      "A. If input is a Fastq file, you can declare an output file for the results (default is stdout):",
+      "  -INFQ \tREQUIRED: Input fastq file: <file.fastq> or <file.fastq.gz>",
+      "  -OSTAT\tOPTIONAL: Output stats file: <file.txt> [default stdout]",
+      "  -QV-OFFSET\tREQUIRED: Phred-scaled offset [33, 64]\n",
+      "B. If input is a stats file produced from a previous run of this script, you can create plots:",
+      "  -INSTAT\tREQUIRED: Input stats file: <file.txt>\n").map(println(_))
+    List("Optional Arguments:",
+      "  -BASEPLOT\tIf you want to produce a plot of base frequencies, place file prefix here "+
+      "(e.g. /path/to/image/filename [no extension; automatically produces .png])",
+      "           \tRequires GNUplot!",
+      "  -QUALPLOT\tIf you want to produce a boxplot of quality scores, place file prefix here "+
+      "(e.g. /path/to/image/filename [no extension; automatically produces .png])",
+      "           \tRequires GNUplot!",
+      "  -h/--help\tPrint this message and exit.\n").map(println(_))
   }
 
   def parse(map: OptionMap, list: List[String]): OptionMap = {
     list match {
       case Nil => checkRequired(map)
-      case "-I" :: file :: tail => parse(map ++ Map('infq-> new File(file)), tail)
-      case "-INPUT" :: file :: tail => parse(map ++ Map('infq-> new File(file)), tail)
-      case "-O" :: file :: tail => parse(map ++ Map('ofil-> new File(file)), tail)
-      case "-OUTPUT" :: file :: tail => parse(map ++ Map('ofil-> new File(file)), tail)
+      // Mutually exclusive IO group A
+      case "-INFQ" :: file :: tail => parse(map ++ Map('infq-> new File(file)), tail)
+      case "-OSTAT" :: file :: tail => parse(map ++ Map('ostat-> new File(file)), tail)
+      // Mututally exclusive IO group B
+      case "-INSTAT" :: file :: tail => parse(map ++ Map('instat-> new File(file)), tail)
+      // Other args
       case "-QV-OFFSET" :: value :: tail => parse(map ++ Map('offset->value.toInt), tail)
-      case "-plot" :: value :: tail => parse(map ++ Map('plot-> new File(value+".png"), tail)
+      case "-BASEPLOT" :: value :: tail => parse(map ++ Map('basePlot-> value), tail)
+      case "-QUALPLOT" :: value :: tail => parse(map ++ Map('qualPlot-> value), tail)
       case "-h" :: tail => mainVerboseUsage; sys.exit(0)
       case "--help" :: tail => mainVerboseUsage; sys.exit(0)
       case option => mainUsage;
@@ -101,30 +140,102 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
    * @return [[java.io.OutputStreamWriter]] the of output
    * @return [[com.kmh.ngs.readers.ReadReader]] an instance of a reader for NGS sequence files.
    */
-  def loadReader(userOpts: OptionMap): (BufferedReader, OutputStreamWriter, ReadReader) = 
-    val inputFile = userOpts('infq).asInstanceOf[File]
-    val outputFile =  
-   inputFileList.map(ioInit.openFileForBufferedReading(_))
-        val inputBufferList = inputFileList.map(ioInit.openFileForBufferedReading(_))
-        //val outputBufferList = outputFileList.map(ioInit.openFileForWriting(_)) 
-        (inputBufferList, 
-         new FastqReader(inputBufferList(0), inputFileList(0), 
-		 if (userOpts.isDefinedAt('start)) Some(userOpts('start).asInstanceOf[Int]) else None,
-		 if (userOpts.isDefinedAt('end)) Some(userOpts('end).asInstanceOf[Int]) else None))
-      }
+  def loadReader(userOpts: OptionMap): (BufferedReader, Option[OutputStreamWriter], Option[ReadReader]) = {
+    if (userOpts.isDefinedAt('infq) && userOpts.isDefinedAt('ostat)) {
+      val inputFile    = userOpts('infq).asInstanceOf[File]
+      val outputFile   = userOpts('ostat).asInstanceOf[File]
+      ioInit.assertFileIsReadable(inputFile)
+      val inputBuffer  = ioInit.openFileForBufferedReading(inputFile)
+      val outputBuffer = ioInit.openFileForWriting(outputFile) 
+      (inputBuffer, Some(outputBuffer), Some(new FastqReader(inputBuffer, inputFile, None, None))) 
     }
 
+    else if (userOpts.isDefinedAt('infq) && !userOpts.isDefinedAt('ostat)) {
+      val inputFile    = userOpts('infq).asInstanceOf[File]
+      ioInit.assertFileIsReadable(inputFile)
+      val inputBuffer  = ioInit.openFileForBufferedReading(inputFile)
+      (inputBuffer, None, Some(new FastqReader(inputBuffer, inputFile, None, None))) 
+    }
+
+    else if (userOpts.isDefinedAt('instat)) {
+      val inputFile    = userOpts('instat).asInstanceOf[File]
+      ioInit.assertFileIsReadable(inputFile)
+      val inputBuffer  = ioInit.openFileForBufferedReading(inputFile)
+      (inputBuffer, None, None) 
+    }
+    // Should never happen 
+    else {
+      log.error(throw new RuntimeException("Something is very wrong!"))
+      sys.exit(1)
+    }
+  }
+
+  def processResults(results: Array[ReadIndexData], 
+  	output: Option[OutputStreamWriter], 
+	userOpts: OptionMap): Unit = {
+    val ReadStatsHeader = 
+   	Array[String]("Index", "N", "MinQ", "MaxQ", "SumQ",
+                      "MeanQ", "Q1", "Median", "Q3", "IQR",
+                      "A_ct", "C_ct", "G_ct", "T_ct", "N_ct").mkString("\t")
+    output match {
+      case Some(output) => {
+        output.write(ReadStatsHeader + "\n")
+        results.toArray.view.zipWithIndex.foreach {
+          case(v, i) => {
+            output.write("%s\t%s\t%s\t%s\t%s\t".format(i, v.counts, v.min, v.max, v.sum) +
+                         "%2.2f\t%s\t%s\t%s\t%s\t".format(v.mean, v.q1, v.med, v.q3, v.iqr) +
+                         "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN) + "\n")
+          }
+        }
+      }
+      case None => {
+        println(ReadStatsHeader)
+        results.toArray.view.zipWithIndex.foreach {
+          case(v, i) => {
+            println("%s\t%s\t%s\t%s\t%s\t".format(i, v.counts, v.min, v.max, v.sum) +
+                    "%2.2f\t%s\t%s\t%s\t%s\t".format(v.mean, v.q1, v.med, v.q3, v.iqr) +
+                    "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN))
+          }
+        }
+      }
+    }
+  }
+         
   /**
    * The main function for filtering reads. 
    * 
    * @throws [[IllegalArgumentException]]
    */ 
   def run = {
-    val userOpts = platform
-    val (inputBufferList, readReader) = loadReader(userOpts)
-    ReadStatsByIndex(readReader, userOpts('offset).asInstanceOf[Int]) 
-    inputBufferList.map(ioInit.closer(_))
-    //outputBufferList.map(ioInit.closer(_))
+    val userOpts = parse(Map(), args) 
+    loadReader(userOpts) match {
+      case (inputBuffer, Some(outputBuffer), Some(readReader)) =>
+        try
+          processResults(
+            ReadStatsByIndex(readReader, userOpts('offset).asInstanceOf[Int]),
+            Some(outputBuffer),
+            userOpts)
+        catch {
+          case err: Throwable => List(inputBuffer, outputBuffer).map(ioInit.closer(_)); 
+            log.error(throw new Exception(err)); sys.exit(1)
+        } finally List(inputBuffer, outputBuffer).map(ioInit.closer(_))
+      case (inputBuffer, None, Some(readReader)) =>
+        try
+          processResults(
+	    ReadStatsByIndex(readReader, userOpts('offset).asInstanceOf[Int]),
+            None,
+            userOpts)
+        catch {
+          case err: Throwable => ioInit.closer(inputBuffer); 
+            log.error(throw new Exception(err)); sys.exit(1)
+        } finally ioInit.closer(inputBuffer)
+       case (inputBuffer, None, None) =>
+         println("Ok");
+         ioInit.closer(inputBuffer)
+       // Should never happen
+       case _ =>
+         log.error(throw new Exception("Something is very wrong")); sys.exit(1)
+    }
   } 
 
 }
