@@ -29,7 +29,7 @@
 
 package com.kmh.ngs.tools
 
-import com.kmh.ngs.readers.{ReadReader, CSFastaReader, FastqReader, PEFastqReader}
+import com.kmh.ngs.readers.{ReadReader, FastqReader}
 import com.kmh.ngs.cmdline.ReadStatisticsArgs
 import com.kmh.ngs.formats.Read
 import java.io.{File, BufferedReader, OutputStreamWriter}
@@ -44,72 +44,67 @@ import com.kmh.ngs.statistics.ReadStatsByIndex
 class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
   def toolName = "'%s'".format(this.getClass()) 
   def description = "Calculates summary statistics for NGS reads."
-  def mainUsage = List(
-    "usage: java -jar NGSTools.jar -T ReadStatistics [-h/--help] " + 
-    "-P/-PLATFORM {SE_illumina/PE_illumina}\n").map(println(_))
-  def mainVerboseUsage = {
-    mainUsage 
-    List(
-    "Required Arguments:",
-    "  -P/-PLATFORM\tChoose SE_illumina (single), or PE_illumina (paired) reads.\n").map(println(_))
-    List(
-    "Optional Arguments:",
-    "  -h/--help\tPrint this message and exit.\n").map(println(_))
-  } 
-  val supportedPlatforms = List("SE_illumina", "PE_illumina")
+  val SP = " " * ("usage: java -jar NGSTools.jar ".length)
+  val required = List('infq, 'ofil, 'offset)
 
-  /**
-   * Parses out the platform of the reads 
-   *
-   * @throws [[IllegalArgumentException]]
-   * @return platform of the reads
-   * @return list of the remaining args
-   */
-  private def platform: OptionMap = {
-    args match {
-      case Nil => log.warn("Please select a platform\n"); mainUsage; sys.exit(1)
+  def mainUsage = List(
+    "usage: java -jar NGSTools.jar -T FilterReads -I/-INPUT file.fastq",
+    SP+"-O/-OUTPUT file.fastq -QV-OFFSET {33,64} [-h/--help]\n").map(println(_))
+
+  def mainVerboseUsage = {
+    mainUsage
+    List("Required Arguments:",
+      "  -I/-INPUT\tInput raw read files: <file.fastq> or <file.fastq.gz>",
+      "  -O/-OUTPUT\tOutput stats file: <file.txt>",
+      "  -QV-OFFSET\tPhred-scaled offset [33, 64]\n").map(println(_))
+    List("Optional Arguments:",
+      "  -plot\tIf you also want to produce a plot, place file prefix here (no extension)",
+      "       \tRequires GNUplot!",
+      "  -h/--help\tPrint this message and exit.\n").map(println(_))
+  }
+
+  def checkRequired(map: OptionMap): OptionMap = {
+    if (required.forall(x => map.isDefinedAt(x)))
+      map
+    else if (map.isEmpty) {
+      mainUsage
+      sys.exit(0)
+    } else {
+      mainUsage
+      log.error(throw new IllegalArgumentException("Missing Required Arguments!!"))
+      sys.exit(1)
+    }
+  }
+
+  def parse(map: OptionMap, list: List[String]): OptionMap = {
+    list match {
+      case Nil => checkRequired(map)
+      case "-I" :: file :: tail => parse(map ++ Map('infq-> new File(file)), tail)
+      case "-INPUT" :: file :: tail => parse(map ++ Map('infq-> new File(file)), tail)
+      case "-O" :: file :: tail => parse(map ++ Map('ofil-> new File(file)), tail)
+      case "-OUTPUT" :: file :: tail => parse(map ++ Map('ofil-> new File(file)), tail)
+      case "-QV-OFFSET" :: value :: tail => parse(map ++ Map('offset->value.toInt), tail)
+      case "-plot" :: value :: tail => parse(map ++ Map('plot-> new File(value+".png"), tail)
       case "-h" :: tail => mainVerboseUsage; sys.exit(0)
       case "--help" :: tail => mainVerboseUsage; sys.exit(0)
-      case "-P" :: value :: tail =>
-        value match {
-          case "SE_illumina" => ReadStatisticsArgs(tail) ++ Map('platform -> value)
-          case "PE_illumina" => ReadStatisticsArgs(tail) ++ Map('platform -> value)
-          case option =>
-            mainUsage;
-            log.error(throw new IllegalArgumentException("Unknown platform "+option));
-            sys.exit(1)
-        } 
-      case "-PLATFORM" :: value :: tail => 
-        value match {
-          case "SE_illumina" => ReadStatisticsArgs(tail) ++ Map('platform -> value)
-          case "PE_illumina" => ReadStatisticsArgs(tail) ++ Map('platform -> value)
-          case option =>
-            mainUsage;
-            log.error(throw new IllegalArgumentException("Unknown platform "+option));
-            sys.exit(1)
-        } 
-      case option =>
-        mainUsage; 
-	log.error(throw new IllegalArgumentException(
-          "Unknown Option; Must specify platform first"));
-          sys.exit(1);
+      case option => mainUsage;
+                     log.error(throw new IllegalArgumentException("Unknown Option "+option));
+                     sys.exit(1);
     }
-  } 
+  }
 
   /**
-   * Creates lists containing input and output streams and the instance of the read iterator.
+   * Creates input stream, a list of output streams, and the instance of the read iterator.
    *
    * @param userOpts the map of the command-line arguments
-   * @return List[[java.io.BufferedReader] the list of input streams
-   * @return List[[java.io.OutputStreamWriter]] the list of output streams
+   * @return The input stream
+   * @return [[java.io.OutputStreamWriter]] the of output
    * @return [[com.kmh.ngs.readers.ReadReader]] an instance of a reader for NGS sequence files.
    */
-  def loadReader(userOpts: OptionMap): (List[BufferedReader], ReadReader) = 
-    userOpts('platform) match {
-      case "SE_illumina" => {
-        val inputFileList = List(userOpts('infq).asInstanceOf[File])
-        //val outputFileList = List(userOpts('outfq).asInstanceOf[File])
-        inputFileList.map(ioInit.openFileForBufferedReading(_))
+  def loadReader(userOpts: OptionMap): (BufferedReader, OutputStreamWriter, ReadReader) = 
+    val inputFile = userOpts('infq).asInstanceOf[File]
+    val outputFile =  
+   inputFileList.map(ioInit.openFileForBufferedReading(_))
         val inputBufferList = inputFileList.map(ioInit.openFileForBufferedReading(_))
         //val outputBufferList = outputFileList.map(ioInit.openFileForWriting(_)) 
         (inputBufferList, 
