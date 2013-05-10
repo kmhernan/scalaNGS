@@ -18,41 +18,24 @@ class ReadIndexData {
       sum += quality_container(pos)
     }
     pos
-    /*var pos = 0; var n = counts/4
-    while (n > 0 && quality_container(pos) <= n) {
-      n -= quality_container(pos)
-      pos += 1
-      while (quality_container(pos) == 0) pos += 1
-    }; pos*/
   }
 
   lazy val q3: Int = {
-    var pos = 0; val n = counts * 3 / 4; var sum = 0
-    while (sum < n && quality_container(pos) <= n) {
+    var pos = 0; val n = counts * 3 / 4; var cts = 0
+    while (cts < n && quality_container(pos) <= n) {
       pos += 1
-      sum += quality_container(pos)
+      cts += quality_container(pos)
     }
     pos
-    /*var pos = 0; var n = counts * 3 / 4
-    while (n > 0 && quality_container(pos) <= n) {
-      n -= quality_container(pos)
-      pos += 1
-      while (quality_container(pos) == 0) pos += 1
-    }; pos*/
   }
 
   lazy val med: Int = {
-    var pos = 0; val n = counts/2; var sum = 0
-    while (sum < n && quality_container(pos) <= n) {
+    var pos = 0; val n = counts/2; var cts = 0
+    while (cts < n && quality_container(pos) <= n) {
       pos += 1
-      sum += quality_container(pos)
+      cts += quality_container(pos)
     }
     pos
-    /*while (n > 0 && quality_container(pos) <= n) {
-      n -= quality_container(pos)
-      pos += 1
-      while (quality_container(pos) == 0) pos += 1
-    }; pos*/
   }
 
   def addQ(i: Int): Unit = {
