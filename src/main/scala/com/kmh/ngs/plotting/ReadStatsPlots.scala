@@ -42,8 +42,8 @@ object MultiQualBasesPlot extends Logging {
               "'-' using (100.*$13/$2) title 'N' lt rgb 'black'",
         "-e", "unset multiplot")
     
-    val process = (plot #< Seq("echo", data, "\nend\n", data, "\nend\n", data, "\nend\n",
-	data, "\nend\n", data, "\nend\n", data, "\nend\n", data, "\nend\n", data, "\nend"))
+    val process = (plot #< Seq("echo", data, data, data,
+		               data, data, data, data, data))
 
     try {
       process.run(new ProcessIO(
@@ -51,10 +51,10 @@ object MultiQualBasesPlot extends Logging {
 	out => {out.close},
 	err => {println(fromInputStream(err).mkString("")); err.close})).exitValue match {
           case 0 => log.info("Successfully created plot %s".format(opng))
-          case err: Int => log.error("Is your output path writable?"); sys.exit(1)
+          case e: Int => throw new RuntimeException("Is your output path writable? '%s'".format(opng)); sys.exit(1);
       }
     } catch {
-      case err: Throwable => log.error("Is GNUplot installed and in your path??"+err); sys.exit(1)
+      case err: Throwable => throw new RuntimeException(err); sys.exit(1) 
     }
   }
 

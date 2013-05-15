@@ -79,9 +79,16 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
         log.error(throw new IllegalArgumentException("When input is a Fastq file, you must declare the offset!!"))
         sys.exit(1)
       }
-      else if (map.isDefinedAt('instat) && !map.isDefinedAt('qual)) {
+      else if (map.isDefinedAt('instat) && !map.isDefinedAt('plot)) {
         mainUsage
         log.error(throw new IllegalArgumentException("When input is a stats file, you must declare plot options!!"))
+        sys.exit(1)
+      } 
+      else if (map.isDefinedAt('plot) && !map('plot).toString.endsWith(".png") && 
+        !map('plot).toString.endsWith(".PNG")) {
+        mainUsage
+        log.error(throw new IllegalArgumentException("Plot file must end with '.png'" +
+	  " otherwise it will be corrupt!!"))
         sys.exit(1)
       }
       else
@@ -96,7 +103,7 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
 
   def mainUsage = List(
     "usage: java -jar NGSTools.jar -T FilterReads {-INFQ file.fastq -QV-OFFSET [33,64] [-OSTAT file.txt] | -INSTAT file.txt}",
-    SP+"[-PLOT <file prefix>] [-h/--help]\n").map(println(_))
+    SP+"[-PLOT <file.png>] [-h/--help]\n").map(println(_))
 
   def mainVerboseUsage = {
     mainUsage
@@ -109,8 +116,7 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
       "  -INSTAT\tREQUIRED: Input stats file: <file.txt>\n").map(println(_))
     List("Optional Arguments:",
       "  -PLOT\tIf you want to produce a multi-plot of base frequencies and quality score, "+
-      "place file prefix here "+
-      "(e.g. /path/to/image/filename [no extension; automatically produces .png])",
+      "place path to file.png here (Must be .png)",
       "           \tRequires GNUplot! (try: gnuplot -V)",
       "  -h/--help\tPrint this message and exit.\n").map(println(_))
   }
@@ -202,7 +208,9 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
               "%2.2f\t%2.2f\t%s\t".format(v.mean, v.stdev, v.med) +
               "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN)}
           output.write(ReadStatsHeader + "\n")
-          output.write(dataArray.mkString("\n") + "\n")  
+          output.write(dataArray.mkString("\n") + "\n") 
+          MultiQualBasesPlot(ReadStatsHeader + "\n" + dataArray.mkString("\n") + "\nend\n",
+		userOpts('plot).toString)
 	}
         else {    
           output.write(ReadStatsHeader + "\n")
@@ -223,7 +231,7 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
               "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN)}.toArray
           println(ReadStatsHeader)
           println(dataArray.mkString("\n"))
-          MultiQualBasesPlot(ReadStatsHeader + "\n" + dataArray.mkString("\n"),
+          MultiQualBasesPlot(ReadStatsHeader + "\n" + dataArray.mkString("\n") + "\nend\n",
 		userOpts('plot).toString)
         }
         else {
@@ -241,9 +249,22 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
   }
 
   /**
+   * Creates an iterator for a stats file
+   *
+   * @param in a [[java.io.BufferedReader]] for the statistics file.
+   * @return [[Iterator[String]]] for each line.
+   */
+  def loadStatFile(in: BufferedReader): Iterator[String] = {
+    val it = Iterator.continually {in.readLine()}
+    for (line <- it.takeWhile(_ != null)) yield { line }
+  }
+ 
+  /**
    * The main function for filtering reads. 
    * 
    * @throws [[IllegalArgumentException]]
+   * @throws [[RuntimeException]]
+   * @throws [[Exception]]
    */ 
   def run = {
     val userOpts = parse(Map(), args) 
@@ -255,9 +276,9 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
             Some(outputBuffer),
             userOpts)
         catch {
-          case err: Throwable => List(inputBuffer, outputBuffer).map(ioInit.closer(_)); 
-            log.error(throw new Exception(err)); sys.exit(1)
+          case err: Throwable => log.error(throw new Exception(err))
         } finally List(inputBuffer, outputBuffer).map(ioInit.closer(_))
+
       case (inputBuffer, None, Some(readReader)) =>
         try
           processResults(
@@ -265,12 +286,21 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
             None,
             userOpts)
         catch {
-          case err: Throwable => ioInit.closer(inputBuffer); 
-            log.error(throw new Exception(err)); sys.exit(1)
+          case err: Throwable => log.error(throw new Exception(err))
         } finally ioInit.closer(inputBuffer)
+
        case (inputBuffer, None, None) =>
-         println("Ok");
-         ioInit.closer(inputBuffer)
+         try {
+          val dataArray = loadStatFile(inputBuffer).toArray
+          // Make sure the file is in the correct format
+          if (!dataArray(0).startsWith("Index") || dataArray(0).split("\t").length != 13)
+            throw new RuntimeException("Incorrect format! '%s' ".format(userOpts('instat).asInstanceOf[File].getName()))
+          // If ok, then plot
+          MultiQualBasesPlot(dataArray.mkString("\n") + "\nend\n",
+	  	userOpts('plot).toString)
+         } catch {
+           case err: Throwable => log.error(throw new Exception(err))
+         } finally ioInit.closer(inputBuffer)
        // Should never happen
        case _ =>
          log.error(throw new Exception("Something is very wrong")); sys.exit(1)
