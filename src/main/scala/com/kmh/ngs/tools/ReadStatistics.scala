@@ -32,13 +32,12 @@ package com.kmh.ngs.tools
 import com.kmh.ngs.readers.{ReadReader, FastqReader}
 import com.kmh.ngs.formats.Read
 import com.kmh.ngs.analyses.{ReadStatsByIndex, ReadIndexData}
+import com.kmh.ngs.plotting.MultiQualBasesPlot
 
 import java.io.{File, BufferedReader, OutputStreamWriter}
 import scala.collection.mutable
 
 import org.eintr.loglady.Logging
-
-
 
 /**
  * Creates summary statistics and figures for NGS sequence data.
@@ -53,6 +52,12 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
                     "and plots quality/base distribution. [GNUplot must be installed]."
   val SP = " " * ("usage: java -jar NGSTools.jar ".length)
 
+  /**
+   * Test for correct usage of mutually exclusive arguments.
+   *
+   * @param map an [[com.kmh.ngs.NGSApp.OptionMap]] containing command-line arguments
+   * @return true if passed, else false
+   */
   def checkMutuallyExclusiveArgs(map: OptionMap): Boolean = { 
     if (map.isDefinedAt('infq) && !map.isDefinedAt('instat)) true
     else if (map.isDefinedAt('instat) && !map.isDefinedAt('ostat)) true
@@ -74,7 +79,7 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
         log.error(throw new IllegalArgumentException("When input is a Fastq file, you must declare the offset!!"))
         sys.exit(1)
       }
-      else if (map.isDefinedAt('instat) && !map.isDefinedAt('qualPlot) && !map.isDefinedAt('basePlot)) {
+      else if (map.isDefinedAt('instat) && !map.isDefinedAt('qual)) {
         mainUsage
         log.error(throw new IllegalArgumentException("When input is a stats file, you must declare plot options!!"))
         sys.exit(1)
@@ -91,7 +96,7 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
 
   def mainUsage = List(
     "usage: java -jar NGSTools.jar -T FilterReads {-INFQ file.fastq -QV-OFFSET [33,64] [-OSTAT file.txt] | -INSTAT file.txt}",
-    SP+"[-BASEPLOT <file prefix>] [-QUALPLOT <file prefix>] [-h/--help]\n").map(println(_))
+    SP+"[-PLOT <file prefix>] [-h/--help]\n").map(println(_))
 
   def mainVerboseUsage = {
     mainUsage
@@ -103,15 +108,18 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
       "B. If input is a stats file produced from a previous run of this script, you can create plots:",
       "  -INSTAT\tREQUIRED: Input stats file: <file.txt>\n").map(println(_))
     List("Optional Arguments:",
-      "  -BASEPLOT\tIf you want to produce a plot of base frequencies, place file prefix here "+
+      "  -PLOT\tIf you want to produce a multi-plot of base frequencies and quality score, "+
+      "place file prefix here "+
       "(e.g. /path/to/image/filename [no extension; automatically produces .png])",
-      "           \tRequires GNUplot!",
-      "  -QUALPLOT\tIf you want to produce a boxplot of quality scores, place file prefix here "+
-      "(e.g. /path/to/image/filename [no extension; automatically produces .png])",
-      "           \tRequires GNUplot!",
+      "           \tRequires GNUplot! (try: gnuplot -V)",
       "  -h/--help\tPrint this message and exit.\n").map(println(_))
   }
 
+  /**
+   * Parses command-line options into [[com.kmh.ngs.NGSApp.OptionMap]]
+   * 
+   * @throws IllegalArgumentException
+   */ 
   def parse(map: OptionMap, list: List[String]): OptionMap = {
     list match {
       case Nil => checkRequired(map)
@@ -122,8 +130,7 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
       case "-INSTAT" :: file :: tail => parse(map ++ Map('instat-> new File(file)), tail)
       // Other args
       case "-QV-OFFSET" :: value :: tail => parse(map ++ Map('offset->value.toInt), tail)
-      case "-BASEPLOT" :: value :: tail => parse(map ++ Map('basePlot-> value), tail)
-      case "-QUALPLOT" :: value :: tail => parse(map ++ Map('qualPlot-> value), tail)
+      case "-PLOT" :: value :: tail => parse(map ++ Map('plot-> value), tail)
       case "-h" :: tail => mainVerboseUsage; sys.exit(0)
       case "--help" :: tail => mainVerboseUsage; sys.exit(0)
       case option => mainUsage;
@@ -133,12 +140,13 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
   }
 
   /**
-   * Creates input stream, a list of output streams, and the instance of the read iterator.
+   * Creates input stream, an optional output stream, and the instance of the read iterator.
    *
    * @param userOpts the map of the command-line arguments
    * @return The input stream
    * @return [[java.io.OutputStreamWriter]] the of output
    * @return [[com.kmh.ngs.readers.ReadReader]] an instance of a reader for NGS sequence files.
+   * @throws RuntimeException
    */
   def loadReader(userOpts: OptionMap): (BufferedReader, Option[OutputStreamWriter], Option[ReadReader]) = {
     if (userOpts.isDefinedAt('infq) && userOpts.isDefinedAt('ostat)) {
@@ -170,37 +178,68 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
     }
   }
 
+  /**
+   * IO and graph creating wrapper from results of [[com.kmh.ngs.analses.ReadStatsByIndex]]
+   * object.
+   *
+   * @param results contained in an [[Array[com.kmh.ngs.analyses.ReadStatsByIndex]]]
+   * @param output the [[Option[java.io.OutputStreamWriter]]] to write stats file to.
+   * @param userOpts the map containing command-line arguments.
+   */
   def processResults(results: Array[ReadIndexData], 
   	output: Option[OutputStreamWriter], 
 	userOpts: OptionMap): Unit = {
     val ReadStatsHeader = 
-   	Array[String]("Index", "N", "MinQ", "MaxQ", "SumQ",
-                      "MeanQ", "Q1", "Median", "Q3", "IQR",
+   	Array[String]("Index", "N", "Min", "Max", "Sum",
+                      "Mean", "StdDev", "Median",
                       "A_ct", "C_ct", "G_ct", "T_ct", "N_ct").mkString("\t")
     output match {
       case Some(output) => {
-        output.write(ReadStatsHeader + "\n")
-        results.toArray.view.zipWithIndex.foreach {
-          case(v, i) => {
-            output.write("%s\t%s\t%s\t%s\t%s\t".format(i, v.counts, v.min, v.max, v.sum) +
-                         "%2.2f\t%s\t%s\t%s\t%s\t".format(v.mean, v.q1, v.med, v.q3, v.iqr) +
-                         "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN) + "\n")
+        if (userOpts.isDefinedAt('plot)) {
+          val dataArray = results.toArray.view.zipWithIndex.map{
+            case(v, i) => 
+              "%s\t%s\t%s\t%s\t%s\t".format(i, v.counts, v.min, v.max, v.sum) +
+              "%2.2f\t%2.2f\t%s\t".format(v.mean, v.stdev, v.med) +
+              "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN)}
+          output.write(ReadStatsHeader + "\n")
+          output.write(dataArray.mkString("\n") + "\n")  
+	}
+        else {    
+          output.write(ReadStatsHeader + "\n")
+          results.toArray.view.zipWithIndex.foreach {
+            case(v, i) =>
+              output.write("%s\t%s\t%s\t%s\t%s\t".format(i, v.counts, v.min, v.max, v.sum) +
+                           "%2.2f\t%2.2f\t%s\t".format(v.mean, v.stdev, v.med) +
+                           "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN) + "\n")
           }
         }
       }
       case None => {
-        println(ReadStatsHeader)
-        results.toArray.view.zipWithIndex.foreach {
-          case(v, i) => {
-            println("%s\t%s\t%s\t%s\t%s\t".format(i, v.counts, v.min, v.max, v.sum) +
-                    "%2.2f\t%s\t%s\t%s\t%s\t".format(v.mean, v.q1, v.med, v.q3, v.iqr) +
-                    "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN))
+        if (userOpts.isDefinedAt('plot)) {
+          val dataArray = results.view.zipWithIndex.map{
+            case(v, i) => 
+              "%s\t%s\t%s\t%s\t%s\t".format(i, v.counts, v.min, v.max, v.sum) +
+              "%2.2f\t%2.2f\t%s\t".format(v.mean, v.stdev, v.med) +
+              "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN)}.toArray
+          println(ReadStatsHeader)
+          println(dataArray.mkString("\n"))
+          MultiQualBasesPlot(ReadStatsHeader + "\n" + dataArray.mkString("\n"),
+		userOpts('plot).toString)
+        }
+        else {
+          println(ReadStatsHeader)
+          results.toArray.view.zipWithIndex.foreach {
+            case(v, i) => {
+              println("%s\t%s\t%s\t%s\t%s\t".format(i, v.counts, v.min, v.max, v.sum) +
+                      "%2.2f\t%2.2f\t%s\t".format(v.mean, v.stdev, v.med) +
+                      "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN))
+            }
           }
         }
       }
     }
   }
-         
+
   /**
    * The main function for filtering reads. 
    * 

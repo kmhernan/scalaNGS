@@ -1,53 +1,33 @@
 package com.kmh.ngs.analyses
 import com.kmh.ngs.readers.ReadReader
-import org.eintr.loglady.Logging
 
+/**
+ * Represents a container for statistics specific to a given index in a FASTQ file.
+ */
 class ReadIndexData {
   val quality_container = Array.fill(50)(0)
   val nucleotide_container = Array.fill(5)(0)
   var counts = 0
-  var max = 0
-  var min = 0
 
   lazy val sum: Int = quality_container.view.zipWithIndex.foldLeft(0)((r,c) => r + c._1*c._2)
-
-  lazy val q1: Int = {
-    var pos = 0; val n = counts/4; var sum = 0
-    while (sum < n && quality_container(pos) <= n) {
-      pos += 1
-      sum += quality_container(pos)
-    }
-    pos
-  }
-
-  lazy val q3: Int = {
-    var pos = 0; val n = counts * 3 / 4; var cts = 0
-    while (cts < n && quality_container(pos) <= n) {
-      pos += 1
-      cts += quality_container(pos)
-    }
-    pos
-  }
-
-  lazy val med: Int = {
-    var pos = 0; val n = counts/2; var cts = 0
-    while (cts < n && quality_container(pos) <= n) {
-      pos += 1
-      cts += quality_container(pos)
-    }
-    pos
+  lazy val mean: Double = sum / counts.toDouble
+  def min: Int = quality_container.takeWhile(x => x == 0).length
+  def max: Int = quality_container.length - quality_container.reverse.takeWhile(x => x == 0).length - 1
+  def med: Int = {
+    val n = counts/2 
+    var cts = 0
+    quality_container.takeWhile{x => cts += x; cts < n}.length - 1
   }
 
   def addQ(i: Int): Unit = {
     quality_container(i) += 1
-    if (counts == 0) min = i else if (i < min) min = i
-    if (i > max) max = i
     counts += 1
   }
 
   def addN(i: Int): Unit = nucleotide_container(i) += 1
-  def mean: Double = sum / counts.toDouble
-  def iqr: Int = q3 - q1
+  def stdev = math.sqrt(quality_container.view.zipWithIndex.filterNot{
+    case(v, i) => v == 0}.foldLeft(0.0){
+    case(r, (v,i)) => r + math.pow(i - mean, 2)*v} / (counts - 1.0))
   def nA: Int = nucleotide_container(0) 
   def nC: Int = nucleotide_container(1) 
   def nG: Int = nucleotide_container(2) 
@@ -56,10 +36,13 @@ class ReadIndexData {
 }
 
 /**
- * Calculates quality statistics and base frequencies at each position in a sequence
+ * Wrapper to create an array of index-specific site statistics 
  *
+ * @param rr the [[com.kmh.ngs.readers.ReadReader]] instance
+ * @param offset the Phred-score offset
+ * @return [[Array[com.kmh.ngs.analyses.ReadIndexData]]
  */
-object ReadStatsByIndex extends Logging {
+object ReadStatsByIndex {
   val baseToInt = Array[Char]('A', 'C', 'G', 'T', 'N') 
   val readArray = new scala.collection.mutable.ArrayBuffer[ReadIndexData]
 
