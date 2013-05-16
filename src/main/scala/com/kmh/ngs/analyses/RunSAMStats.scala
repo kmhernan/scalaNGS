@@ -1,7 +1,7 @@
 package com.kmh.ngs.analyses
 import com.kmh.ngs.readers.SAMReader
 import com.kmh.ngs.formats.SAMRecord
-import scala.collection.mutable.{Map, ArrayBuffer}
+import scala.collection.mutable.{Map, ListBuffer}
 import org.eintr.loglady.Logging
 
 /**
@@ -10,8 +10,8 @@ import org.eintr.loglady.Logging
 class SAMData {
   // Initialize class parameters
   val mapqArray = Array.fill(251)(0)
-  val queryArray = ArrayBuffer[String]
-  val targetMap = Map[String, (Int, Int)]() 
+  val queryArray = new ListBuffer[String]
+  val multiMap = Map[String, Int]() 
   var counts = 0
   var sum = 0
 
@@ -32,10 +32,9 @@ class SAMData {
         throw new RuntimeException("Quality scores exceed 250! This should not happen\n"+iob)
     }
 
-    
     if (queryArray.exists(y => y == x.query)) {
       if (multiMap.isDefinedAt(x.query)) { multiMap(x.query) += 1 }
-      else { multiMap += x.query -> 1; multiMap(x.query) += 1 }
+      else { multiMap += x.query -> 2 }
     }
     else queryArray += x.query
   }
@@ -59,9 +58,6 @@ class SAMData {
    println("%s\t%s\t%.2f\t%.2f\t%s\t%s\t%s".format(counts, sum, mean, stdev, min, max, med))
   }
 
-  def getMultiMapReport: Unit = {
-    println(multiMap)
-  }
 } 
 
 object RunSAMStats extends Logging {
@@ -71,6 +67,5 @@ object RunSAMStats extends Logging {
     rr.iter.foreach(rec => samData.parse(rec))
     log.info("Generating statistics report...")
     samData.getStatsReport
-    samData.getMultiMapReport
   } 
 }
