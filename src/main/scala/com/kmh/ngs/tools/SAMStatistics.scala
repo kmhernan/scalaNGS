@@ -29,12 +29,11 @@
 
 package com.kmh.ngs.tools
 
-//import com.kmh.ngs.readers.{ReadReader, FastqReader}
-//import com.kmh.ngs.formats.Read
-//import com.kmh.ngs.analyses.{ReadStatsByIndex, ReadIndexData}
-//import com.kmh.ngs.plotting.MultiQualBasesPlot
+import com.kmh.ngs.readers.SAMReader
+import com.kmh.ngs.formats.SAMRecord
+import com.kmh.ngs.analyses.RunSAMStats
 
-import java.io.{File, BufferedReader, OutputStreamWriter}
+import java.io.{File, BufferedReader}
 import scala.collection.mutable
 
 import org.eintr.loglady.Logging
@@ -108,7 +107,7 @@ class SAMStatistics(val args: List[String]) extends NGSApp with Logging {
    * @throws RuntimeException
    */
   def loadReader(userOpts: OptionMap): (BufferedReader, SAMReader) = {
-    val inputFile    = userOpts('infq).asInstanceOf[File]
+    val inputFile    = userOpts('insam).asInstanceOf[File]
     ioInit.assertFileIsReadable(inputFile)
     val inputBuffer  = ioInit.openFileForBufferedReading(inputFile)
     (inputBuffer, new SAMReader(inputBuffer, inputFile)) 
@@ -122,7 +121,16 @@ class SAMStatistics(val args: List[String]) extends NGSApp with Logging {
    * @throws [[Exception]]
    */ 
   def run = {
-    val userOpts = parse(Map(), args) 
-  } 
+    val userOpts = parse(Map(), args)
+    val (inputBuffer, samReader) = loadReader(userOpts)
+    try {
+      samReader.skipHeader
+      RunSAMStats(samReader)
+    }
+    catch {
+      case err: Throwable => log.error("Something wrong " + err);
+    }
+    finally ioInit.closer(inputBuffer) 
+  }
 
 }
