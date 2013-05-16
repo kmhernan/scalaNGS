@@ -1,56 +1,76 @@
 package com.kmh.ngs.analyses
 import com.kmh.ngs.readers.SAMReader
 import com.kmh.ngs.formats.SAMRecord
-import scala.collection.mutable.{ArrayBuffer, Map}
+import scala.collection.mutable.{Map, ArrayBuffer}
+import org.eintr.loglady.Logging
 
 /**
- * Represents a container for statistics specific to a given index in a FASTQ file.
+ * Provides containers for SAM file data and various statistics. 
  */
 class SAMData {
-  val mapqArray = new ArrayBuffer[Int]
-  val queryArray = new ArrayBuffer[String] 
-  var multiMap = Map[String, Int]() 
+  // Initialize class parameters
+  val mapqArray = Array.fill(251)(0)
+  val queryArray = ArrayBuffer[String]
+  val targetMap = Map[String, (Int, Int)]() 
   var counts = 0
+  var sum = 0
 
+  /**
+   * Parses the current SAMRecord instance into the containers and
+   * increments counts.
+   *
+   * @param x an instance of a [[com.kmh.ngs.formats.SAMRecord]]
+   */
   def parse(x: SAMRecord): Unit = {
     counts += 1
-    while (x.mapq >= mapqArray.length) {
-      mapqArray += 0
+    sum += x.mapq
+
+    try
+      mapqArray(x.mapq) += 1
+    catch {
+      case iob: ArrayIndexOutOfBoundsException => 
+        throw new RuntimeException("Quality scores exceed 250! This should not happen\n"+iob)
     }
-    mapqArray(x.mapq) += 1
+
+    
     if (queryArray.exists(y => y == x.query)) {
-      if (multiMap.isDefinedAt(x.query)) {
-        multiMap(x.query) += 1
-      } 
-      else {
-        multiMap += (x.query -> 0)
-        multiMap(x.query) += 1
-      }
+      if (multiMap.isDefinedAt(x.query)) { multiMap(x.query) += 1 }
+      else { multiMap += x.query -> 1; multiMap(x.query) += 1 }
     }
-    else {
-      queryArray += x.query
-    }
+    else queryArray += x.query
   }
 
-  lazy val sum: Int = mapqArray.view.zipWithIndex.foldLeft(0)((r,c) => r + c._1*c._2)
-  lazy val mean: Double = sum / counts.toDouble
-  def min: Int = mapqArray.takeWhile(x => x == 0).length
-  def max: Int = mapqArray.length - mapqArray.reverse.takeWhile(x => x == 0).length - 1
-  def med: Int = {
-    val n = counts/2 
-    var cts = 0
-    mapqArray.takeWhile{x => cts += x; cts < n}.length - 1
+  /**
+   * Generates statistics and prints in nice format.
+   */
+  def getStatsReport: Unit = {
+    val mean: Double = sum / counts.toDouble
+    val min: Int = mapqArray.takeWhile(x => x == 0).length
+    val max: Int = mapqArray.length - mapqArray.reverse.takeWhile(x => x == 0).length - 1
+    val med: Int = {
+      val n = counts / 2
+      var cts = 0
+      mapqArray.takeWhile{x => cts += x; cts < n}.length - 1 
+    }
+    val stdev: Double = math.sqrt(mapqArray.view.zipWithIndex.filterNot{
+      case(v, i) => v == 0}.foldLeft(0.0){
+      case(r, (v,i)) => r + math.pow(i - mean, 2)*v} / (counts - 1.0))
+   println("N\tSum\tMean\tSD\tMin\tMax\tMed")
+   println("%s\t%s\t%.2f\t%.2f\t%s\t%s\t%s".format(counts, sum, mean, stdev, min, max, med))
   }
-  def stdev = math.sqrt(mapqArray.view.zipWithIndex.filterNot{
-    case(v, i) => v == 0}.foldLeft(0.0){
-    case(r, (v,i)) => r + math.pow(i - mean, 2)*v} / (counts - 1.0))
-}
 
-object RunSAMStats {
+  def getMultiMapReport: Unit = {
+    println(multiMap)
+  }
+} 
+
+object RunSAMStats extends Logging {
   def apply(rr: SAMReader): Unit = {
     val samData = new SAMData
+    log.info("Parsing SAM Records...")
     rr.iter.foreach(rec => samData.parse(rec))
-    println("%s\t%s\t%s\t%s\t%s\t%s\t%s".format(samData.sum, samData.mean, samData.stdev, 
-	samData.min, samData.max, samData.med, samData.counts))
+    log.info("Generating statistics report...")
+    samData.getStatsReport
+    samData.getMultiMapReport
   } 
 }

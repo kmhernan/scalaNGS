@@ -5,8 +5,8 @@ class SAMRecord(
 	val query: String,
 	val flag: Int,
 	val target: String,
-	val mapq: Int,
 	val refstart: Int,
+	val mapq: Int,
 	val cigar: String,
 	val sequence: String,
 	val quality: String) {
