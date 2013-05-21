@@ -84,7 +84,6 @@ object NGSTools extends Logging {
     value match {
       case "FilterReads" => new FilterReads(list)
       case "ReadStatistics" => new ReadStatistics(list)
-      case "SAMStatistics" => new SAMStatistics(list)
       case option => mainUsage;
 		     log.error(throw new IllegalArgumentException("Unknown Option "+option));
      	 	     sys.exit(1);

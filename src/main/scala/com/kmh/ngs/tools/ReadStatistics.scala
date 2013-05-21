@@ -32,7 +32,6 @@ package com.kmh.ngs.tools
 import com.kmh.ngs.readers.{ReadReader, FastqReader}
 import com.kmh.ngs.formats.Read
 import com.kmh.ngs.analyses.{ReadStatsByIndex, ReadIndexData}
-import com.kmh.ngs.plotting.MultiQualBasesPlot
 
 import java.io.{File, BufferedReader, OutputStreamWriter}
 import scala.collection.mutable
@@ -48,76 +47,33 @@ import org.eintr.loglady.Logging
  */
 class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
   def toolName = "'%s'".format(this.getClass()) 
-  def description = "Calculates summary statistics for NGS reads "+
-                    "and plots quality/base distribution. [GNUplot must be installed]."
+  def description = "Calculates summary statistics for NGS reads "
   val SP = " " * ("usage: java -jar NGSTools.jar ".length)
-
-  /**
-   * Test for correct usage of mutually exclusive arguments.
-   *
-   * @param map an [[com.kmh.ngs.NGSApp.OptionMap]] containing command-line arguments
-   * @return true if passed, else false
-   */
-  def checkMutuallyExclusiveArgs(map: OptionMap): Boolean = { 
-    if (map.isDefinedAt('infq) && !map.isDefinedAt('instat)) true
-    else if (map.isDefinedAt('instat) && !map.isDefinedAt('ostat)) true
-    else if (map.isDefinedAt('instat) && map.isDefinedAt('offset)) {
-      log.warn("Offset is meaningless when input is a stats file...")
-      true
-    } 
-    else false
-  }
 
   def checkRequired(map: OptionMap): OptionMap = {
     if (map.isEmpty) {
       mainUsage
       sys.exit(0)
     }
-    else if (checkMutuallyExclusiveArgs(map)) {
-      if (map.isDefinedAt('infq) && !map.isDefinedAt('offset)) {
-        mainUsage
-        log.error(throw new IllegalArgumentException("When input is a Fastq file, you must declare the offset!!"))
-        sys.exit(1)
-      }
-      else if (map.isDefinedAt('instat) && !map.isDefinedAt('plot)) {
-        mainUsage
-        log.error(throw new IllegalArgumentException("When input is a stats file, you must declare plot options!!"))
-        sys.exit(1)
-      } 
-      else if (map.isDefinedAt('plot) && !map('plot).toString.endsWith(".png") && 
-        !map('plot).toString.endsWith(".PNG")) {
-        mainUsage
-        log.error(throw new IllegalArgumentException("Plot file must end with '.png'" +
-	  " otherwise it will be corrupt!!"))
-        sys.exit(1)
-      }
-      else
-        map
-    } 
-    else {
+    else if (map.isDefinedAt('infq) && !map.isDefinedAt('offset)) {
       mainUsage
-      log.error(throw new IllegalArgumentException("Mutally Exclusive Arguments error!!"))
+      log.error(throw new IllegalArgumentException("When input is a Fastq file, you must declare the offset!!"))
       sys.exit(1)
     }
+    else
+      map
   }
 
   def mainUsage = List(
-    "usage: java -jar NGSTools.jar -T FilterReads {-INFQ file.fastq -QV-OFFSET [33,64] [-OSTAT file.txt] | -INSTAT file.txt}",
-    SP+"[-PLOT <file.png>] [-h/--help]\n").map(println(_))
+    "usage: java -jar NGSTools.jar -T FilterReads -INFQ file.fastq -QV-OFFSET [33,64] [-OSTAT file.txt]\n").map(println(_))
 
   def mainVerboseUsage = {
     mainUsage
-    List("Mutually exclusive arguments:",
-      "A. If input is a Fastq file, you can declare an output file for the results (default is stdout):",
-      "  -INFQ \tREQUIRED: Input fastq file: <file.fastq> or <file.fastq.gz>",
-      "  -OSTAT\tOPTIONAL: Output stats file: <file.txt> [default stdout]",
-      "  -QV-OFFSET\tREQUIRED: Phred-scaled offset [33, 64]\n",
-      "B. If input is a stats file produced from a previous run of this script, you can create plots:",
-      "  -INSTAT\tREQUIRED: Input stats file: <file.txt>\n").map(println(_))
+    List("Required arguments:",
+      "  -INFQ \t: Input fastq file: <file.fastq> or <file.fastq.gz>",
+      "  -QV-OFFSET\tREQUIRED: Phred-scaled offset [33, 64]\n").map(println(_))
     List("Optional Arguments:",
-      "  -PLOT\tIf you want to produce a multi-plot of base frequencies and quality score, "+
-      "place path to file.png here (Must be .png)",
-      "           \tRequires GNUplot! (try: gnuplot -V)",
+      "  -OSTAT\tOPTIONAL: Output stats file: <file.txt> [default stdout]",
       "  -h/--help\tPrint this message and exit.\n").map(println(_))
   }
 
@@ -129,14 +85,9 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
   def parse(map: OptionMap, list: List[String]): OptionMap = {
     list match {
       case Nil => checkRequired(map)
-      // Mutually exclusive IO group A
       case "-INFQ" :: file :: tail => parse(map ++ Map('infq-> new File(file)), tail)
       case "-OSTAT" :: file :: tail => parse(map ++ Map('ostat-> new File(file)), tail)
-      // Mututally exclusive IO group B
-      case "-INSTAT" :: file :: tail => parse(map ++ Map('instat-> new File(file)), tail)
-      // Other args
       case "-QV-OFFSET" :: value :: tail => parse(map ++ Map('offset->value.toInt), tail)
-      case "-PLOT" :: value :: tail => parse(map ++ Map('plot-> value), tail)
       case "-h" :: tail => mainVerboseUsage; sys.exit(0)
       case "--help" :: tail => mainVerboseUsage; sys.exit(0)
       case option => mainUsage;
@@ -170,13 +121,6 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
       val inputBuffer  = ioInit.openFileForBufferedReading(inputFile)
       (inputBuffer, None, Some(new FastqReader(inputBuffer, inputFile, None, None))) 
     }
-
-    else if (userOpts.isDefinedAt('instat)) {
-      val inputFile    = userOpts('instat).asInstanceOf[File]
-      ioInit.assertFileIsReadable(inputFile)
-      val inputBuffer  = ioInit.openFileForBufferedReading(inputFile)
-      (inputBuffer, None, None) 
-    }
     // Should never happen 
     else {
       log.error(throw new RuntimeException("Something is very wrong!"))
@@ -185,14 +129,15 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
   }
 
   /**
-   * IO and graph creating wrapper from results of [[com.kmh.ngs.analses.ReadStatsByIndex]]
+   * IO wrapper from results of [[com.kmh.ngs.analses.ReadStatsByIndex]]
    * object.
    *
    * @param results contained in an [[Array[com.kmh.ngs.analyses.ReadStatsByIndex]]]
    * @param output the [[Option[java.io.OutputStreamWriter]]] to write stats file to.
    * @param userOpts the map containing command-line arguments.
    */
-  def processResults(results: Array[ReadIndexData], 
+  def processResults(
+	results: Array[ReadIndexData], 
   	output: Option[OutputStreamWriter], 
 	userOpts: OptionMap): Unit = {
     val ReadStatsHeader = 
@@ -201,64 +146,27 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
                       "A_ct", "C_ct", "G_ct", "T_ct", "N_ct").mkString("\t")
     output match {
       case Some(output) => {
-        if (userOpts.isDefinedAt('plot)) {
-          val dataArray = results.toArray.view.zipWithIndex.map{
-            case(v, i) => 
-              "%s\t%s\t%s\t%s\t%s\t".format(i, v.counts, v.min, v.max, v.sum) +
-              "%2.2f\t%2.2f\t%s\t".format(v.mean, v.stdev, v.med) +
-              "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN)}
-          output.write(ReadStatsHeader + "\n")
-          output.write(dataArray.mkString("\n") + "\n") 
-          MultiQualBasesPlot(ReadStatsHeader + "\n" + dataArray.mkString("\n") + "\nend\n",
-		userOpts('plot).toString)
-	}
-        else {    
-          output.write(ReadStatsHeader + "\n")
-          results.toArray.view.zipWithIndex.foreach {
-            case(v, i) =>
-              output.write("%s\t%s\t%s\t%s\t%s\t".format(i, v.counts, v.min, v.max, v.sum) +
-                           "%2.2f\t%2.2f\t%s\t".format(v.mean, v.stdev, v.med) +
-                           "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN) + "\n")
-          }
+        output.write(ReadStatsHeader + "\n")
+        results.toArray.view.zipWithIndex.foreach {
+          case(v, i) =>
+            output.write("%s\t%s\t%s\t%s\t%s\t".format(i, v.counts, v.min, v.max, v.sum) +
+                         "%2.2f\t%2.2f\t%s\t".format(v.mean, v.stdev, v.med) +
+                         "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN) + "\n")
         }
       }
       case None => {
-        if (userOpts.isDefinedAt('plot)) {
-          val dataArray = results.view.zipWithIndex.map{
-            case(v, i) => 
-              "%s\t%s\t%s\t%s\t%s\t".format(i, v.counts, v.min, v.max, v.sum) +
-              "%2.2f\t%2.2f\t%s\t".format(v.mean, v.stdev, v.med) +
-              "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN)}.toArray
-          println(ReadStatsHeader)
-          println(dataArray.mkString("\n"))
-          MultiQualBasesPlot(ReadStatsHeader + "\n" + dataArray.mkString("\n") + "\nend\n",
-		userOpts('plot).toString)
-        }
-        else {
-          println(ReadStatsHeader)
-          results.toArray.view.zipWithIndex.foreach {
-            case(v, i) => {
-              println("%s\t%s\t%s\t%s\t%s\t".format(i, v.counts, v.min, v.max, v.sum) +
-                      "%2.2f\t%2.2f\t%s\t".format(v.mean, v.stdev, v.med) +
-                      "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN))
-            }
+        println(ReadStatsHeader)
+        results.toArray.view.zipWithIndex.foreach {
+          case(v, i) => {
+            println("%s\t%s\t%s\t%s\t%s\t".format(i, v.counts, v.min, v.max, v.sum) +
+                    "%2.2f\t%2.2f\t%s\t".format(v.mean, v.stdev, v.med) +
+                    "%s\t%s\t%s\t%s\t%s".format(v.nA, v.nC, v.nG, v.nT, v.nN))
           }
         }
       }
     }
   }
 
-  /**
-   * Creates an iterator for a stats file
-   *
-   * @param in a [[java.io.BufferedReader]] for the statistics file.
-   * @return [[Iterator[String]]] for each line.
-   */
-  def loadStatFile(in: BufferedReader): Iterator[String] = {
-    val it = Iterator.continually {in.readLine()}
-    for (line <- it.takeWhile(_ != null)) yield { line }
-  }
- 
   /**
    * The main function for filtering reads. 
    * 
@@ -289,19 +197,6 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
           case err: Throwable => log.error(throw new Exception(err))
         } finally ioInit.closer(inputBuffer)
 
-       case (inputBuffer, None, None) =>
-         try {
-          val dataArray = loadStatFile(inputBuffer).toArray
-          // Make sure the file is in the correct format
-          if (!dataArray(0).startsWith("Index") || dataArray(0).split("\t").length != 13)
-            throw new RuntimeException("Incorrect format! '%s' ".format(userOpts('instat).asInstanceOf[File].getName()))
-          // If ok, then plot
-          MultiQualBasesPlot(dataArray.mkString("\n") + "\nend\n",
-	  	userOpts('plot).toString)
-         } catch {
-           case err: Throwable => log.error(throw new Exception(err))
-         } finally ioInit.closer(inputBuffer)
-       // Should never happen
        case _ =>
          log.error(throw new Exception("Something is very wrong")); sys.exit(1)
     }
