@@ -2,6 +2,8 @@ import AssemblyKeys._
 
 assemblySettings
 
+jarName in assembly := "NGStools.jar"
+
 // Basic settings
 
 name := "NGSTools"
@@ -18,7 +20,7 @@ description := "A full suite of NGS tools"
 
 scalaVersion := "2.10.1"
 
-scalacOptions += "-deprecation"
+scalacOptions ++= Seq("-deprecation", "-optimize")
 
 // Dependencies
 
