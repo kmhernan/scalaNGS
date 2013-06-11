@@ -39,33 +39,33 @@ class FilterPEIlluminaArgs extends Arguments with Logging {
     SP+"{-R1/-READ1 file_R1.fastq -R2/-READ2 file_R2.fastq | -INTER file_R1_R2.fastq} ",
     SP+"{-O1/-OUTREAD1 file_R1.fastq -O2/-OUTREAD2 file_R2.fastq | -OUT-INTER file_R1_R2.fastq}",
     SP+"-QV-OFFSET {33, 64} [-START Int] [-END Int] [-HPOLY Double] [-MINQ Int] [-NMISSING Int]",
-    SP+"[-POLYA Double Int] [-h/--help]\n").map(println(_))
+    SP+"[-POLYA Double Int] [-h/--help]\n").foreach(println(_))
 
   def mainVerboseUsage = {
     mainUsage
     List("Required Arguments:",
       "Supports both separated and interleaved paired-end Fastq files.",
       "If input Fastq files are separated (mate-pairs must be sorted in same order):",
-      "  -R1/-READ1\tInput raw fastq file for first paired-end: <file_R1.fastq> or <file_R1.fastq.gz>",
-      "  -R2/-READ2\tInput raw fastq file for second paired-end: <file_R2.fastq> or <file_R2.fastq.gz>\n",
+      "  -R1/-READ1 <String>\tInput raw fastq file for first paired-end: <file_R1.fastq> or <file_R1.fastq.gz>",
+      "  -R2/-READ2 <String>\tInput raw fastq file for second paired-end: <file_R2.fastq> or <file_R2.fastq.gz>\n",
       "If input Fastq file is interleaved (pair 1 must always be followed by its mate-pair 2):",
-      "  -INTER\tInput raw fastq file containing both pairs: <file_R1_R2.fastq> or <file_R1_R2.fastq.gz>\n",
+      "  -INTER <String>\tInput raw fastq file containing both pairs: <file_R1_R2.fastq> or <file_R1_R2.fastq.gz>\n",
       "Regardless of input format, reads can be written to either separated or interleaved fastq files:",
-      "  -O1/-OUTPUT1\tOutput separated fastq file for first paired-end: <file_R1.fastq>",
-      "  -O2/-OUTPUT2\tOutput separated fastq file for second paired-end: <file_R2.fastq>",
-      "  -OUT-INTER\tOutput interleaved fastq file: <file_R1_R2.fastq>\n",
-      "  -QV-OFFSET\tPhred-scaled offset [33, 64]\n").map(println(_))
+      "  -O1/-OUTPUT1 <String>\tOutput separated fastq file for first paired-end: <file_R1.fastq>",
+      "  -O2/-OUTPUT2 <String>\tOutput separated fastq file for second paired-end: <file_R2.fastq>",
+      "  -OUT-INTER <String>\tOutput interleaved fastq file: <file_R1_R2.fastq>\n",
+      "  -QV-OFFSET <Int>\tPhred-scaled offset [33, 64]\n").foreach(println(_))
     List("Optional Arguments:",
-      "  -START\t5' cut position (1-based index)",
-      "  -END\t\t3' cut position (1-based index)",
-      "      \t\tex. AlfI: -START 1 -END 36",
-      "  -HPOLY\tRelative length of repetitive base to consider a homopolymer. (Proportion of read length; e.g., between 0 and 1)",
-      "  -MINQ\t\tMinimum average quality score allowed.",
-      "  -NMISSING\tLower limit for N's allowed.",
-      "  -POLYA\tTakes two values:",
-      "        \t  1) ProportionLimit [Double] - If a read has trailing A's of length <value> * sequence length, trim them.",
-      "        \t  2) MinimumSize [Int] - If the trimmed sequence is shorter than <value>, remove it.",
-      "  -h/--help\tPrint this message and exit.\n").map(println(_))
+      "  -START <Int>\t\t5' cut position (1-based index)",
+      "  -END <Int>\t\t3' cut position (1-based index). Ex. AlfI: -START 1 -END 36",
+      "  -HPOLY <Double>\tRelative length of repetitive base to consider a homopolymer. " + 
+                         "(Proportion of read length; e.g., between 0 and 1)",
+      "  -MINQ <Int>\t\tMinimum average quality score allowed.",
+      "  -NMISSING <Int>\tLower limit for N's allowed.",
+      "  -POLYA <Double> <Int>\tTakes two values:",
+      "        \t\t  1) ProportionLimit <Double> - If a read has trailing A's of length <value> * sequence length, trim them.",
+      "        \t\t  2) MinimumSize <Int> - If the trimmed sequence is shorter than <value>, remove it.",
+      "  -h/--help\t\tPrint this message and exit.\n").foreach(println(_))
   }
 
   def checkRequired(map: OptionMap): OptionMap = {
@@ -133,7 +133,7 @@ class FilterPEIlluminaArgs extends Arguments with Logging {
           parse(map ++ Map('polyA->value.toDouble, 'minSize->value2.toInt), tail)
         catch {
           case err: Throwable =>
-                log.error("POLYA takes 2 values: ProportionLimit [Double] MinimumSize [Int]"+err);
+                log.error("POLYA takes 2 values: ProportionLimit <Double> MinimumSize <Int>"+err);
                 sys.exit(1)
         }
       case "-h" :: tail => mainVerboseUsage; sys.exit(0)

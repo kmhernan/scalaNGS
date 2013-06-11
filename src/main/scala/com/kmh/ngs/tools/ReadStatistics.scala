@@ -65,16 +65,16 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
   }
 
   def mainUsage = List(
-    "usage: java -jar NGSTools.jar -T FilterReads -INFQ file.fastq -QV-OFFSET [33,64] [-OSTAT file.txt]\n").map(println(_))
+    "usage: java -jar NGSTools.jar -T FilterReads -INFQ file.fastq -QV-OFFSET [33,64] [-OSTAT file.txt]\n").foreach(println(_))
 
   def mainVerboseUsage = {
     mainUsage
     List("Required arguments:",
-      "  -INFQ \t: Input fastq file: <file.fastq> or <file.fastq.gz>",
-      "  -QV-OFFSET\tREQUIRED: Phred-scaled offset [33, 64]\n").map(println(_))
+      "  -INFQ <String>\tInput fastq file: <file.fastq> or <file.fastq.gz>",
+      "  -QV-OFFSET <Int>\tPhred-scaled offset [33, 64]\n").foreach(println(_))
     List("Optional Arguments:",
-      "  -OSTAT\tOPTIONAL: Output stats file: <file.txt> [default stdout]",
-      "  -h/--help\tPrint this message and exit.\n").map(println(_))
+      "  -OSTAT <String>\tOutput stats file: <file.txt> [default stdout]",
+      "  -h/--help\t\tPrint this message and exit.\n").foreach(println(_))
   }
 
   /**

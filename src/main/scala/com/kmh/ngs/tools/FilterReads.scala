@@ -47,16 +47,16 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
   def description = "Filters NGS reads based on user inputs."
   def mainUsage = List(
     "usage: java -jar NGSTools.jar -T FilterReads [-h/--help] " + 
-    "-P/-PLATFORM {solid/SE_illumina/PE_illumina}\n").map(println(_))
+    "-P/-PLATFORM {solid/SE_illumina/PE_illumina}\n").foreach(println(_))
   def mainVerboseUsage = {
     mainUsage 
     List(
     "Required Arguments:",
     "  -P/-PLATFORM\tChoose solid (currently only SE reads), " +
-    "SE_illumina (single), or PE_illumina (paired) reads.\n").map(println(_))
+    "SE_illumina (single), or PE_illumina (paired) reads.\n").foreach(println(_))
     List(
     "Optional Arguments:",
-    "  -h/--help\tPrint this message and exit.\n").map(println(_))
+    "  -h/--help\tPrint this message and exit.\n").foreach(println(_))
   } 
   val supportedPlatforms = List("solid", "SE_illumina", "PE_illumina")
 

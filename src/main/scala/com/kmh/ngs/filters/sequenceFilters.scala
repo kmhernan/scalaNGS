@@ -114,7 +114,7 @@ object SequenceFilters {
    * @param userOpts the map of command-line arguments
    */ 
   def isHomopolymer(read: Read, userOpts: OptionMap): Boolean = {
-    lazy val basesArray = Array[String]("A", "C", "G", "T")
+    lazy val basesList = List[String]("A", "C", "G", "T")
     lazy val hpoly = userOpts('hpoly).asInstanceOf[Double]
     read match {
       case cs: CSFastaRecord =>
@@ -124,14 +124,14 @@ object SequenceFilters {
           true
         } else false
       case fq: FastqRecord =>
-        basesArray.map(_*(fq.sequence.length*hpoly).toInt).find(fq.sequence.contains(_) == true) match {
+        basesList.map(_*(fq.sequence.length*hpoly).toInt).find(fq.sequence.contains(_) == true) match {
           case None => false
           case Some(_) => ct_map("Homopolymer") += 1; true
         }
       case pefq: PEFastqRecord =>
-        basesArray.map(_*(pefq.sequence.length*hpoly).toInt).find(pefq.sequence.contains(_) == true) match {
+        basesList.map(_*(pefq.sequence.length*hpoly).toInt).find(pefq.sequence.contains(_) == true) match {
           case None => 
-            basesArray.map(_*(pefq.read2.sequence.length*hpoly).toInt).find(pefq.read2.sequence.contains(_) == true) match {
+            basesList.map(_*(pefq.read2.sequence.length*hpoly).toInt).find(pefq.read2.sequence.contains(_) == true) match {
               case None => false
               case Some(_) => ct_map("Homopolymer") += 1; true
             }

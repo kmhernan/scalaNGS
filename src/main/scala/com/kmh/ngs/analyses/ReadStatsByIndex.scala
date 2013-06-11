@@ -8,8 +8,8 @@ class ReadIndexData {
   val quality_container = Array.fill(50)(0)
   val nucleotide_container = Array.fill(5)(0)
   var counts = 0
+  var sum = 0
 
-  lazy val sum: Int = quality_container.view.zipWithIndex.foldLeft(0)((r,c) => r + c._1*c._2)
   lazy val mean: Double = sum / counts.toDouble
   def min: Int = quality_container.takeWhile(x => x == 0).length
   def max: Int = quality_container.length - quality_container.reverse.takeWhile(x => x == 0).length - 1
@@ -22,6 +22,7 @@ class ReadIndexData {
   def addQ(i: Int): Unit = {
     quality_container(i) += 1
     counts += 1
+    sum += i
   }
 
   def addN(i: Int): Unit = nucleotide_container(i) += 1

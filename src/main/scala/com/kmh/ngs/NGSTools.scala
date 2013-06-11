@@ -47,11 +47,14 @@ object NGSTools extends Logging {
   val header      = "NGSTools v1.0.0 - 2013, Kyle Hernandez, UNLICENSED: http://unlicense.org/" 
   val desc        = "A suite of tools for NGS data written in the Scala language"
   def mainUsage   = List("\nSelect a tool to use (option -h for available tools and their descriptions)", 
-    "Usage: java -jar NGSTools.jar -T/-TOOL tool [-h/--help]\n").map(println(_))
+    "Usage: java -jar NGSTools.jar -T/-TOOL tool [-h/--help]\n").foreach(println(_))
   def mainVerboseUsage = {
     mainUsage
-    List("Required Arguments:", "  -T\tFilterReads, etc.\n").map(println(_))
-    List("Optional Arguments:", "  -h/--help\tPrint this usage statement and exit program\n").map(println(_))
+    List("Available Tools:", 
+         "  -T\tFilterReads\tFilters NGS reads based on user-inputs.",
+	 "  -T\tReadStatistics\tCreates a tab-delimited file containing various statistics, ",
+         "                    \twhich can be fed into the accessory R-script PlotQualityStats.R\n").foreach(println(_))
+    List("Optional Arguments:", "  -h/--help\tPrint this usage statement and exit program\n").foreach(println(_))
   }
 
   /**
@@ -96,13 +99,13 @@ object NGSTools extends Logging {
    *
    */ 
   def main(args: Array[String]): Unit = {
-    List("-"*80, header, desc, "-"*80).map(log.info(_))
+    List("-"*80, header, desc, "-"*80).foreach(log.info(_))
 
     val start = System.currentTimeMillis()
     val analysis = getAnalysis(args.toList)
 
     List("Arguments: " + args.mkString(" "),
-         "Starting '%s'".format(analysis.getClass)).map(log.info(_))
+         "Starting '%s'".format(analysis.getClass)).foreach(log.info(_))
 
     analysis.run
 

@@ -39,25 +39,25 @@ class FilterSEIlluminaArgs extends Arguments with Logging {
     "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM SE_illumina ",
     SP+"-I/-INPUT file.fastq -O/-OUTPUT file.fastq -QV-OFFSET {33,64}",
     SP+"[-START Int] [-END Int] [-HPOLY Double] [-MINQ Int] [-NMISSING Int]",
-    SP+"[-POLYA Double Int] [-h/--help]\n").map(println(_))
+    SP+"[-POLYA Double Int] [-h/--help]\n").foreach(println(_))
 
   def mainVerboseUsage = {
     mainUsage
     List("Required Arguments:",
-      "  -I/-INPUT\tInput raw read files: <file.fastq> or <file.fastq.gz>",
-      "  -O/-OUTPUT\tOutput filtered read files: <file.fastq>",
-      "  -QV-OFFSET\tPhred-scaled offset [33, 64]\n").map(println(_))
+      "  -I/-INPUT <String>\tInput raw read files: <file.fastq> or <file.fastq.gz>",
+      "  -O/-OUTPUT <String>\tOutput filtered read files: <file.fastq>",
+      "  -QV-OFFSET <String>\tPhred-scaled offset [33, 64]\n").foreach(println(_))
     List("Optional Arguments:",
-      "  -START\t5' cut position (1-based index)",
-      "  -END\t\t3' cut position (1-based index)",
-      "      \t\tex. AlfI: -START 1 -END 36",
-      "  -HPOLY\tRelative length of repetitive base to consider a homopolymer. (Proportion of read length; e.g., between 0 and 1)",
-      "  -MINQ\t\tMinimum average quality score allowed.",
-      "  -NMISSING\tLower limit for N's allowed.",
-      "  -POLYA\tTakes two values:",
-      "        \t  1) ProportionLimit [Double] - If a read has trailing A's of length <value> * sequence length, trim them.",
-      "        \t  2) MinimumSize [Int] - If the trimmed sequence is shorter than <value>, remove it.",
-      "  -h/--help\tPrint this message and exit.\n").map(println(_))
+      "  -START <Int>\t\t5' cut position (1-based index)",
+      "  -END <Int>\t\t3' cut position (1-based index). Ex. AlfI: -START 1 -END 36",
+      "  -HPOLY <Double>\tRelative length of repetitive base to consider a homopolymer. " + 
+                         "(Proportion of read length; e.g., between 0 and 1)",
+      "  -MINQ <Int>\t\tMinimum average quality score allowed.",
+      "  -NMISSING <Int>\tLower limit for N's allowed.",
+      "  -POLYA <Double> <Int>\tTakes two values:",
+      "        \t\t  1) ProportionLimit [Double] - If a read has trailing A's of length <value> * sequence length, trim them.",
+      "        \t\t  2) MinimumSize [Int] - If the trimmed sequence is shorter than <value>, remove it.",
+      "  -h/--help\t\tPrint this message and exit.\n").foreach(println(_))
   }
 
   def checkRequired(map: OptionMap): OptionMap = {

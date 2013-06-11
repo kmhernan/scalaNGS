@@ -35,24 +35,24 @@ class FilterSolidArgs extends Arguments with Logging {
   val required = List('incsfa, 'incsq, 'ocsfa, 'ocsq)
   
   def mainUsage = List(
-    "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM solid",
+    "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM solid", 
     SP+"-I/-INPUT file.csfasta file.qual -O/-OUTPUT file.csfasta file.qual",
-    SP+"[-START Int] [-END Int] [-HPOLY Double] [-MINQ Int] [--MISSING] [-h/--help]\n").map(println(_))
+    SP+"[-START Int] [-END Int] [-HPOLY Double] [-MINQ Int] [--MISSING] [-h/--help]\n").foreach(println(_))
 
   def mainVerboseUsage = {
     mainUsage
     List(
       "Required Arguments:",
       "  -I/-INPUT"+"\t"+"Input raw read files: <file.csfasta> <file.qual>",
-      "  -O/-OUTPUT"+"\t"+"Output filtered read files: <file.csfasta> <file.qual>\n").map(println(_))
+      "  -O/-OUTPUT"+"\t"+"Output filtered read files: <file.csfasta> <file.qual>\n").foreach(println(_))
     List(
       "Optional Arguments:",
       "  -START\t5' cut position (1-based index)",
       "  -END\t\t3' cut position (1-based index)",
       "  -HPOLY\tRelative length of repetitive base to consider a homopolymer.",
       "  -MINQ\tMinimum average quality score allowed.",
-      "  --MISSING\tTrims reads with missing data, required for mapping reads.",
-      "  -h/--help\tPrint this message and exit.\n").map(println(_))
+      "  --MISSING\tRemoves reads with missing data, required for mapping reads.",
+      "  -h/--help\tPrint this message and exit.\n").foreach(println(_))
   }
 
   def checkRequired(map: OptionMap): OptionMap = {
