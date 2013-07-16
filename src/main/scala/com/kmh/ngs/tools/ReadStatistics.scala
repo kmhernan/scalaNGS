@@ -46,8 +46,11 @@ import org.eintr.loglady.Logging
  * @constructor args a list of command-line arguments
  */
 class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
+
   def toolName = "'%s'".format(this.getClass()) 
+
   def description = "Calculates summary statistics for NGS reads "
+
   val SP = " " * ("usage: java -jar NGSTools.jar ".length)
 
   def checkRequired(map: OptionMap): OptionMap = {
@@ -55,25 +58,28 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
       mainUsage
       sys.exit(0)
     }
-    else if (map.isDefinedAt('infq) && !map.isDefinedAt('offset)) {
+
+    else if (map.isDefinedAt('input) && !map.isDefinedAt('offset)) {
       mainUsage
       log.error(throw new IllegalArgumentException("When input is a Fastq file, you must declare the offset!!"))
       sys.exit(1)
     }
+
     else
       map
   }
 
   def mainUsage = List(
-    "usage: java -jar NGSTools.jar -T FilterReads -INFQ file.fastq -QV-OFFSET [33,64] [-OSTAT file.txt]\n").foreach(println(_))
+    "usage: java -jar NGSTools.jar -T FilterReads -I/-INPUT file.fastq " +
+    "-QV-OFFSET [33,64] [-O/-OUTPUT file.txt] [-h/--help]\n").foreach(println(_))
 
   def mainVerboseUsage = {
     mainUsage
     List("Required arguments:",
-      "  -INFQ <String>\tInput fastq file: <file.fastq> or <file.fastq.gz>",
+      "  -I/-INPUT <String>\tInput fastq file: <file.fastq> or <file.fastq.gz>",
       "  -QV-OFFSET <Int>\tPhred-scaled offset [33, 64]\n").foreach(println(_))
     List("Optional Arguments:",
-      "  -OSTAT <String>\tOutput stats file: <file.txt> [default stdout]",
+      "  -O/-OUTPUT <String>\tOutput stats file: <file.txt> [default stdout]",
       "  -h/--help\t\tPrint this message and exit.\n").foreach(println(_))
   }
 
@@ -85,8 +91,10 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
   def parse(map: OptionMap, list: List[String]): OptionMap = {
     list match {
       case Nil => checkRequired(map)
-      case "-INFQ" :: file :: tail => parse(map ++ Map('infq-> new File(file)), tail)
-      case "-OSTAT" :: file :: tail => parse(map ++ Map('ostat-> new File(file)), tail)
+      case "-I" :: file :: tail => parse(map ++ Map('input-> new File(file)), tail)
+      case "-INPUT" :: file :: tail => parse(map ++ Map('input-> new File(file)), tail)
+      case "-O" :: file :: tail => parse(map ++ Map('ostat-> new File(file)), tail)
+      case "-OUTPUT" :: file :: tail => parse(map ++ Map('ostat-> new File(file)), tail)
       case "-QV-OFFSET" :: value :: tail => parse(map ++ Map('offset->value.toInt), tail)
       case "-h" :: tail => mainVerboseUsage; sys.exit(0)
       case "--help" :: tail => mainVerboseUsage; sys.exit(0)
@@ -106,8 +114,8 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
    * @throws RuntimeException
    */
   def loadReader(userOpts: OptionMap): (BufferedReader, Option[OutputStreamWriter], Option[ReadReader]) = {
-    if (userOpts.isDefinedAt('infq) && userOpts.isDefinedAt('ostat)) {
-      val inputFile    = userOpts('infq).asInstanceOf[File]
+    if (userOpts.isDefinedAt('input) && userOpts.isDefinedAt('ostat)) {
+      val inputFile    = userOpts('input).asInstanceOf[File]
       val outputFile   = userOpts('ostat).asInstanceOf[File]
       ioInit.assertFileIsReadable(inputFile)
       val inputBuffer  = ioInit.openFileForBufferedReading(inputFile)
@@ -115,8 +123,8 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
       (inputBuffer, Some(outputBuffer), Some(new FastqReader(inputBuffer, inputFile, None, None))) 
     }
 
-    else if (userOpts.isDefinedAt('infq) && !userOpts.isDefinedAt('ostat)) {
-      val inputFile    = userOpts('infq).asInstanceOf[File]
+    else if (userOpts.isDefinedAt('input) && !userOpts.isDefinedAt('ostat)) {
+      val inputFile    = userOpts('input).asInstanceOf[File]
       ioInit.assertFileIsReadable(inputFile)
       val inputBuffer  = ioInit.openFileForBufferedReading(inputFile)
       (inputBuffer, None, Some(new FastqReader(inputBuffer, inputFile, None, None))) 

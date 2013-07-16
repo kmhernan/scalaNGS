@@ -1,5 +1,6 @@
 package com.kmh.ngs.analyses
 import com.kmh.ngs.readers.ReadReader
+import org.eintr.loglady.Logging
 
 /**
  * Represents a container for statistics specific to a given index in a FASTQ file.
@@ -41,14 +42,16 @@ class ReadIndexData {
  *
  * @param rr the [[com.kmh.ngs.readers.ReadReader]] instance
  * @param offset the Phred-score offset
- * @return [[Array[com.kmh.ngs.analyses.ReadIndexData]]
+ * @return [[Array[com.kmh.ngs.analyses.ReadIndexData]]]
  */
-object ReadStatsByIndex {
+object ReadStatsByIndex extends Logging {
   val baseToInt = Array[Char]('A', 'C', 'G', 'T', 'N') 
   val readArray = new scala.collection.mutable.ArrayBuffer[ReadIndexData]
+  var total = 0
 
   def apply(rr: ReadReader, offset: Int): Array[ReadIndexData] = {
     rr.iter.foreach(rec => {
+      total += 1
       rec.quality.map(_.toInt-offset).view.zipWithIndex.foreach{
         case(v,i) => { 
           if (readArray.isEmpty)
@@ -60,6 +63,7 @@ object ReadStatsByIndex {
         }
       }
     })
+    log.info("NREADS=%s".format(total))
     readArray.toArray
   } 
 
