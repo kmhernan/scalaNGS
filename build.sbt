@@ -2,7 +2,7 @@ import AssemblyKeys._
 
 assemblySettings
 
-jarName in assembly := "NGStools.jar"
+jarName in assembly := "NGSTools.jar"
 
 // Basic settings
 
