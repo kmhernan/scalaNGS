@@ -1,4 +1,4 @@
-# NGStools
+# NGSTools
 
 *A compilation of tools for filtering and manipulating various NGS format written in the Scala language.*
 
@@ -22,7 +22,7 @@
 
 ## General Usage:
 
-`java -jar NGStools.jar -T/-TOOL <tool> [-h/--help]`
+`java -jar NGSTools.jar -T/-TOOL <tool> [-h/--help]`
 
 Available tools:
 * FilterReads - Filters NGS reads based on user-inputs.
@@ -33,7 +33,7 @@ Available tools:
 ### Solid reads
 
 ```
-usage: java -jar NGStools.jar -T FilterReads -P/-PLATFORM solid
+usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM solid
                               -I/-INPUT file.csfasta file.qual -O/-OUTPUT file.csfasta file.qual
                               [-START Int] [-END Int] [-HPOLY Double] [-MINQ Int] [--MISSING] [-h/--help]
 
@@ -53,7 +53,7 @@ Optional Arguments:
 ### Single-end Illumina
 
 ```
-usage: java -jar NGStools.jar -T FilterReads -P/-PLATFORM SE_illumina 
+usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM SE_illumina 
                               -I/-INPUT file.fastq -O/-OUTPUT file.fastq -QV-OFFSET {33,64}
                               [-START Int] [-END Int] [-HPOLY Double] [-MINQ Int] [-NMISSING Int]
                               [-POLYA Double Int] [-h/--help]
@@ -78,7 +78,7 @@ Optional Arguments:
 ### Paired-end Illumina
 
 ```
-usage: java -jar NGStools.jar -T FilterReads -P/-PLATFORM PE_illumina 
+usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM PE_illumina 
                               {-R1/-READ1 file_R1.fastq -R2/-READ2 file_R2.fastq | -INTER file_R1_R2.fastq} 
                               {-O1/-OUTREAD1 file_R1.fastq -O2/-OUTREAD2 file_R2.fastq | -OUT-INTER file_R1_R2.fastq}
                               -QV-OFFSET {33, 64} [-START Int] [-END Int] [-HPOLY Double] [-MINQ Int] [-NMISSING Int]
@@ -115,7 +115,7 @@ Optional Arguments:
 ## ReadStatistics Usage:
 
 ```
-usage: java -jar NGStools.jar -T ReadStatistics -I/-INPUT file.fastq -QV-OFFSET [33,64] [-O/-OUTPUT file.txt] [-h/--help]
+usage: java -jar NGSTools.jar -T ReadStatistics -I/-INPUT file.fastq -QV-OFFSET [33,64] [-O/-OUTPUT file.txt] [-h/--help]
 
 Required arguments:
   -I/-INPUT <String>	Input fastq file: <file.fastq> or <file.fastq.gz>
