@@ -1,4 +1,4 @@
-# NGSTools
+# NGStools
 
 *A compilation of tools for filtering and manipulating various NGS format written in the Scala language.*
 
