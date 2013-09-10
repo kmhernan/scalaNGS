@@ -70,7 +70,7 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
   }
 
   def mainUsage = List(
-    "usage: java -jar NGSTools.jar -T FilterReads -I/-INPUT file.fastq " +
+    "usage: java -jar NGSTools.jar -T ReadStatistics -I/-INPUT file.fastq " +
     "-QV-OFFSET [33,64] [-O/-OUTPUT file.txt] [-h/--help]\n").foreach(println(_))
 
   def mainVerboseUsage = {
@@ -176,7 +176,7 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
   }
 
   /**
-   * The main function for filtering reads. 
+   * The main function for analyzing reads. 
    * 
    * @throws [[IllegalArgumentException]]
    * @throws [[RuntimeException]]
