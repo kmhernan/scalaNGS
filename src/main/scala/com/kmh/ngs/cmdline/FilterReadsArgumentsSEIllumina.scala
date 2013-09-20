@@ -38,31 +38,44 @@ class FilterSEIlluminaArgs extends Arguments with Logging {
   def mainUsage = List(
     "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM SE_illumina ",
     SP+"-I/-INPUT file.fastq -O/-OUTPUT file.fastq -QV-OFFSET {33,64}",
-    SP+"[-START Int] [-END Int] [-HPOLY Double] [-MINQ Int] [-NMISSING Int]",
+    SP+"[-START Int] [-END Int] [--CLIP-LEADER String] [--KEEP-LEADER]",
+    SP+"[-HPOLY Double] [-MINQ Int] [-NMISSING Int]",
     SP+"[-POLYA Double Int] [-h/--help]\n").foreach(println(_))
 
   def mainVerboseUsage = {
     mainUsage
     List("Required Arguments:",
-      "  -I/-INPUT <String>\tInput raw read files: <file.fastq> or <file.fastq.gz>",
-      "  -O/-OUTPUT <String>\tOutput filtered read files: <file.fastq>",
-      "  -QV-OFFSET <String>\tPhred-scaled offset [33, 64]\n").foreach(println(_))
-    List("Optional Arguments:",
-      "  -START <Int>\t\t5' cut position (1-based index)",
-      "  -END <Int>\t\t3' cut position (1-based index). Ex. AlfI: -START 1 -END 36",
-      "  -HPOLY <Double>\tRelative length of repetitive base to consider a homopolymer. " + 
-                         "(Proportion of read length; e.g., between 0 and 1)",
-      "  -MINQ <Int>\t\tMinimum average quality score allowed.",
-      "  -NMISSING <Int>\tLower limit for N's allowed.",
-      "  -POLYA <Double> <Int>\tTakes two values:",
-      "        \t\t  1) ProportionLimit [Double] - If a read has trailing A's of length <value> * sequence length, trim them.",
-      "        \t\t  2) MinimumSize [Int] - If the trimmed sequence is shorter than <value>, remove it.",
-      "  -h/--help\t\tPrint this message and exit.\n").foreach(println(_))
+      "  -I/-INPUT       " + "Input raw read files: <file.fastq> or <file.fastq.gz>",
+      "  -O/-OUTPUT      " + "Output filtered read files: <file.fastq>",
+      "  -QV-OFFSET      " + "Phred-scaled offset [33, 64]\n",
+      "Optional Arguments:",
+      "I. Read Clipping Options",
+      "  -START          " + "5' cut position (1-based index).",
+      "  -END            " + "3' cut position (1-based index). Ex. AlfI: -START 1 -END 36",
+      "  --CLIP-LEADER   " + "IUPAC sequence to search for at the 5' end of the read and remove.",
+      "  --KEEP-LEADER   " + "Flag to say whether the sequences without leader should be kept.",
+      "                  " + "By default, they are discarded.",
+      "II. Read Filtering Options", 
+      "  -HPOLY          " + "Relative length of repetitive base to consider a homopolymer.", 
+      "                  " + "(Proportion of read length - between 0.0 and 1.0).",
+      "  -MINQ           " + "Minimum average quality score allowed (integer).",
+      "  -NMISSING       " + "Lower limit for N's allowed.",
+      "  -POLYA          " + "Takes two values:",
+      "                  " + "1) ProportionLimit [Double] - If a read has trailing A's of",
+      "                  " + "                              length <value> * sequence length, trim them.",
+      "                  " + "2) MinimumSize [Int] - If the trimmed sequence is shorter",
+      "                  " + "                       than <value>, remove it.",
+      "  -h/--help       " + "Print this message and exit.\n").foreach(println(_))
   }
 
   def checkRequired(map: OptionMap): OptionMap = {
-    if (required.forall(x => map.isDefinedAt(x)))
-      map
+    if (required.forall(x => map.isDefinedAt(x))) {
+      if (map.isDefinedAt('start) && map.isDefinedAt('clipLead)) {
+        log.error(throw new IllegalArgumentException("Can't use both '-START' and '--CLIP-LEADER'"))
+        sys.exit(1)
+      } else
+        map
+    }
     else if (map.isEmpty) {
       mainUsage
       sys.exit(0)
@@ -83,6 +96,8 @@ class FilterSEIlluminaArgs extends Arguments with Logging {
       case "-QV-OFFSET" :: value :: tail => parse(map ++ Map('offset->value.toInt), tail)
       case "-START" :: value :: tail => parse(map ++ Map('start->value.toInt), tail)
       case "-END" :: value :: tail => parse(map ++ Map('end->value.toInt), tail)
+      case "--CLIP-LEADER" :: value :: tail => parse(map ++ Map('clipLead->value), tail)
+      case "--KEEP-LEADER" :: value :: tail => parse(map ++ Map('keepLead->value), tail)
       case "-HPOLY" :: value :: tail => parse(map ++ Map('hpoly->value.toDouble), tail)
       case "-MINQ" :: value :: tail => parse(map ++ Map('minq->value.toInt), tail)
       case "-NMISSING" :: value :: tail => parse(map ++ Map('minN->value.toInt), tail)

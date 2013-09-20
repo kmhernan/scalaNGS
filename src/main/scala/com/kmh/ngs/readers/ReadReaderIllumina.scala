@@ -83,12 +83,14 @@ case class FastqReader(
    * @param en - [[Option[Int]] end position (1-based index).
    * @param string - Either quality or sequence to trim.
    */
-  def trim(st: Option[Int], en: Option[Int], string: String): String = {
-    (st, en) match {
-      case (Some(st), Some(en)) => string.slice(st-1, en)
-      case (Some(st), None) => string.slice(st-1, string.length)
-      case (None, Some(en)) => string.slice(0, en)
-      case (None, None) => string
+  def trim(st: Option[Int], en: Option[Int], clipLead: Option[String], 
+           keepLead: Option[String], string: String): String = {
+    (st, en, clipLead, keepLead) match {
+      case (Some(st), Some(en), None, None) => string.slice(st-1, en)
+      case (Some(st), None, None, None) => string.slice(st-1, string.length)
+      case (None, Some(en), None, None) => string.slice(0, en)
+      case (None, Some(en), 
+      case (None, None, None, None) => string
     }
   }
 
