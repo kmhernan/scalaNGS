@@ -10,7 +10,7 @@ name := "NGSTools"
 
 organization := "com.kmh"
 
-version := "1.0.0"
+version := "1.1.0"
 
 licenses := Seq("UNLICENSE" -> url("http://unlicense.org/UNLICENSE"))
 
