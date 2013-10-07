@@ -38,9 +38,9 @@ class FilterSEIlluminaArgs extends Arguments with Logging {
   def mainUsage = List(
     "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM SE_illumina ",
     SP+"-I/-INPUT file.fastq -O/-OUTPUT file.fastq -QV-OFFSET {33,64}",
-    SP+"[-START Int] [-END Int] [--CLIP-LEADER String] [--KEEP-LEADER]",
+    SP+"[-START Int] [-END Int]",
     SP+"[-HPOLY Double] [-MINQ Int] [-NMISSING Int]",
-    SP+"[-POLYA Double Int] [-h/--help]\n").foreach(println(_))
+    SP+"[-TRIM-POLYA Int] [-h/--help]\n").foreach(println(_))
 
   def mainVerboseUsage = {
     mainUsage
@@ -52,19 +52,14 @@ class FilterSEIlluminaArgs extends Arguments with Logging {
       "I. Read Clipping Options",
       "  -START          " + "5' cut position (1-based index).",
       "  -END            " + "3' cut position (1-based index). Ex. AlfI: -START 1 -END 36",
-      "  --CLIP-LEADER   " + "IUPAC sequence to search for at the 5' end of the read and remove.",
-      "  --KEEP-LEADER   " + "Flag to say whether the sequences without leader should be kept.",
-      "                  " + "By default, they are discarded.",
+      "  -TRIM-POLYA     " + "If you wish to remove the Poly-A tail, use with MinimumSize <Int> ",
+      "                  " + "If the trimmed sequence is shorter than MinimumSize, remove it.",
+
       "II. Read Filtering Options", 
       "  -HPOLY          " + "Relative length of repetitive base to consider a homopolymer.", 
       "                  " + "(Proportion of read length - between 0.0 and 1.0).",
       "  -MINQ           " + "Minimum average quality score allowed (integer).",
       "  -NMISSING       " + "Lower limit for N's allowed.",
-      "  -POLYA          " + "Takes two values:",
-      "                  " + "1) ProportionLimit [Double] - If a read has trailing A's of",
-      "                  " + "                              length <value> * sequence length, trim them.",
-      "                  " + "2) MinimumSize [Int] - If the trimmed sequence is shorter",
-      "                  " + "                       than <value>, remove it.",
       "  -h/--help       " + "Print this message and exit.\n").foreach(println(_))
   }
 
@@ -101,14 +96,7 @@ class FilterSEIlluminaArgs extends Arguments with Logging {
       case "-HPOLY" :: value :: tail => parse(map ++ Map('hpoly->value.toDouble), tail)
       case "-MINQ" :: value :: tail => parse(map ++ Map('minq->value.toInt), tail)
       case "-NMISSING" :: value :: tail => parse(map ++ Map('minN->value.toInt), tail)
-      case "-POLYA" :: value :: value2 :: tail =>
-        try
-          parse(map ++ Map('polyA->value.toDouble, 'minSize->value2.toInt), tail)
-        catch {
-          case err: Throwable =>
-                log.error("POLYA takes 2 values: ProportionLimit [Double] MinimumSize [Int]"+err);
-                sys.exit(1)
-        }
+      case "-TRIM-POLYA" :: value :: tail => parse(map ++ Map('minSize->value.toInt), tail)
       case "-h" :: tail => mainVerboseUsage; sys.exit(0)
       case "--help" :: tail => mainVerboseUsage; sys.exit(0)
       case option => mainUsage;

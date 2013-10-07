@@ -20,7 +20,7 @@ description := "A full suite of NGS tools"
 
 scalaVersion := "2.10.1"
 
-scalacOptions ++= Seq("-deprecation", "-optimize")
+scalacOptions ++= Seq("-deprecation", "-optimize", "-Yinline-warnings")
 
 // Dependencies
 

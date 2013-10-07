@@ -36,6 +36,4 @@ trait ReadReader {
   def hasNext: Boolean
   def next: Read
   def iter: Iterator[Read]
-  def start: Option[Int]
-  def end: Option[Int]
 }

@@ -147,8 +147,10 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
            outputBufferList,
            new PEFastqReader(inputBufferList(0), None, 
                  inputFileList(0), None,
-		 if (userOpts.isDefinedAt('start)) Some(userOpts('start).asInstanceOf[Int]) else None,
-		 if (userOpts.isDefinedAt('end)) Some(userOpts('end).asInstanceOf[Int]) else None))
+		 if (userOpts.isDefinedAt('r1Five)) Some(userOpts('r1Five).asInstanceOf[Int]) else None,
+		 if (userOpts.isDefinedAt('r1Three)) Some(userOpts('r1Three).asInstanceOf[Int]) else None,
+		 if (userOpts.isDefinedAt('r2Five)) Some(userOpts('r2Five).asInstanceOf[Int]) else None,
+		 if (userOpts.isDefinedAt('r2Three)) Some(userOpts('r2Three).asInstanceOf[Int]) else None))
         } else {
           val inputFileList = List(userOpts('inR1), userOpts('inR2)).map(_.asInstanceOf[File])
           val outputFileList = 
@@ -161,8 +163,10 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
            outputBufferList,
            new PEFastqReader(inputBufferList(0), Some(inputBufferList(1)), 
                  inputFileList(0), Some(inputFileList(1)), 
-		 if (userOpts.isDefinedAt('start)) Some(userOpts('start).asInstanceOf[Int]) else None,
-		 if (userOpts.isDefinedAt('end)) Some(userOpts('end).asInstanceOf[Int]) else None))
+		 if (userOpts.isDefinedAt('r1Five)) Some(userOpts('r1Five).asInstanceOf[Int]) else None,
+		 if (userOpts.isDefinedAt('r1Three)) Some(userOpts('r1Three).asInstanceOf[Int]) else None,
+		 if (userOpts.isDefinedAt('r2Five)) Some(userOpts('r2Five).asInstanceOf[Int]) else None,
+		 if (userOpts.isDefinedAt('r2Three)) Some(userOpts('r2Three).asInstanceOf[Int]) else None))
         }
     }
   }

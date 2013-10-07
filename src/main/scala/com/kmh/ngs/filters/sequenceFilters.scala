@@ -144,31 +144,57 @@ object SequenceFilters {
    * Removes polyA tail by making a copy of the immutable case class instance 
    *
    * @param read an instance of [[com.kmh.ngs.formats.Read]]
-   * @param polyLimit the relative length of AAA tail to consider polyA
    * @return a copy of the [[com.kmh.ngs.formats.Read]] instance with polyA tail removed 
    */ 
-  def removePolyA(rec: Read, polyLimit: Double): Read = rec match {
+  def removePolyA(rec: Read): Read = rec match {
     case fq: FastqRecord => {
-      lazy val paString = "A"*(fq.sequence.length*polyLimit).toInt
-      val paIndex = fq.sequence.indexOf(paString)
-      if (paIndex < 0)
-        fq 
-      else {
-        ct_map("Poly A") += 1
-        fq.copy(sequence = fq.sequence.take(paIndex), quality = fq.quality.take(paIndex))
+      lazy val paRegex = """(AAA+A)$""".r.unanchored 
+      (paRegex findFirstMatchIn fq.sequence) map (_.start) match {
+        case Some(e) => ct_map("Poly A") += 1; fq.copy(sequence =fq.sequence.take(e), quality = fq.quality.take(e));
+        case None => fq
       }
     }
+
     case pefq: PEFastqRecord => {
-      lazy val paString = "A"*(pefq.sequence.length*polyLimit).toInt
-      val paIndex = pefq.sequence.indexOf(paString)
-      val pa2Index = pefq.read2.sequence.indexOf(paString)
-      if (paIndex < 0 && pa2Index < 0)
-        pefq 
-      else {
-        ct_map("Poly A") += 1
-        pefq.copy(sequence = pefq.sequence.take(paIndex), quality = pefq.quality.take(paIndex), 
-		read2 = pefq.read2.copy(sequence = pefq.read2.sequence.take(pa2Index), 
-		quality = pefq.read2.quality.take(pa2Index)))
+      lazy val paRegex = """(AAA+A)$""".r.unanchored
+      lazy val ptRegex = """^(TTT+T)""".r.unanchored
+      val paFound = (paRegex findFirstIn pefq.sequence).nonEmpty
+      val ptFound = (ptRegex findFirstIn pefq.read2.sequence).nonEmpty
+      (paFound, ptFound) match {
+        case (true, true) => 
+          ct_map("Poly A") += 1;
+          val idxR1 = (paRegex findFirstMatchIn pefq.sequence) map (_.start) match {
+            case Some(e) => e
+            case None => throw new Exception("Shouldn't happen")
+          }
+          val idxR2 = (ptRegex findFirstMatchIn pefq.read2.sequence) map (_.end) match {
+            case Some(e) => e
+            case None => throw new Exception("Shouldn't happen")
+          }
+          pefq.copy(sequence = pefq.sequence.take(idxR1), 
+                quality = pefq.quality.take(idxR1), 
+		read2 = pefq.read2.copy(sequence = pefq.read2.sequence.slice(idxR2, pefq.read2.sequence.size), 
+		        quality = pefq.read2.quality.slice(idxR2, pefq.read2.sequence.size)))
+
+        case (true, false) =>
+          ct_map("Poly A") += 1;
+          val idxR1 = (paRegex findFirstMatchIn pefq.sequence) map (_.start) match {
+            case Some(e) => e
+            case None => throw new Exception("Shouldn't happen")
+          }
+          pefq.copy(sequence = pefq.sequence.take(idxR1), 
+                quality = pefq.quality.take(idxR1))
+ 
+        case (false, true) => 
+          ct_map("Poly A") += 1;
+          val idxR2 = (ptRegex findFirstMatchIn pefq.read2.sequence) map (_.end) match {
+            case Some(e) => e
+            case None => throw new Exception("Shouldn't happen")
+          }
+          pefq.copy(read2 = pefq.read2.copy(sequence = pefq.read2.sequence.slice(idxR2, pefq.read2.sequence.size), 
+		quality = pefq.read2.quality.slice(idxR2, pefq.read2.quality.size)))
+
+        case (false, false) => pefq
       }
     }
   }
@@ -193,11 +219,10 @@ object SequenceFilters {
   def apply(readReader: ReadReader, userOpts: OptionMap, outList: List[OutputStreamWriter]): Map[String, Int] = {
     val filterFunctions = loadFilters(userOpts)
     if(userOpts.isDefinedAt('polyA)) {
-      lazy val paLimit = userOpts('polyA).asInstanceOf[Double]
       lazy val szLimit = userOpts('minSize).asInstanceOf[Int]
       readReader.iter.foreach(rec => {
         ct_map("Total Reads") += 1
-        val recWithoutPoly = removePolyA(rec, paLimit)
+        val recWithoutPoly = removePolyA(rec)
         recWithoutPoly match {
           case fq: FastqRecord => 
             if (fq.sequence.length < szLimit)
