@@ -44,7 +44,7 @@ object NGSTools extends Logging {
    *
    */
   val programName = "NGSTools"
-  val header      = "NGSTools v1.0.0 - 2013, Kyle Hernandez, UNLICENSED: http://unlicense.org/" 
+  val header      = "NGSTools v1.1.0 - 2013, Kyle Hernandez, UNLICENSED: http://unlicense.org/" 
   val desc        = "A suite of tools for NGS data written in the Scala language"
   def mainUsage   = List("\nSelect a tool to use (option -h for available tools and their descriptions)", 
     "Usage: java -jar NGSTools.jar -T/-TOOL tool [-h/--help]\n").foreach(println(_))
