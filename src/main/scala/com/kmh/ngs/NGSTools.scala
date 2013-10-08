@@ -51,9 +51,11 @@ object NGSTools extends Logging {
   def mainVerboseUsage = {
     mainUsage
     List("Available Tools:", 
-         "  -T\tFilterReads\tFilters NGS reads based on user-inputs.",
-	 "  -T\tReadStatistics\tCreates a tab-delimited file containing various statistics, ",
-         "                    \twhich can be fed into the accessory R-script PlotQualityStats.R\n").foreach(println(_))
+         "  -T/TOOL  " + "FilterReads    " + "Filters NGS reads based on user-inputs.",
+	 "           " + "ReadStatistics " + "Creates a tab-delimited file containing various statistics, ",
+         "           " + "               " + "which can be fed into the accessory R-script PlotQualityStats.R",
+         "           " + "AlignPairs     " + "Align paired-end reads to one-another and perform other tasks"
+    ).foreach(println(_))
     List("Optional Arguments:", "  -h/--help\tPrint this usage statement and exit program\n").foreach(println(_))
   }
 
@@ -87,6 +89,7 @@ object NGSTools extends Logging {
     value match {
       case "FilterReads" => new FilterReads(list)
       case "ReadStatistics" => new ReadStatistics(list)
+      case "AlignPairs" => new AlignPairs(list)
       case option => mainUsage;
 		     log.error(throw new IllegalArgumentException("Unknown Option "+option));
      	 	     sys.exit(1);
