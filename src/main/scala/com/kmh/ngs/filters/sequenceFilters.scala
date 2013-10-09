@@ -148,7 +148,7 @@ object SequenceFilters {
    */ 
   def removePolyA(rec: Read): Read = rec match {
     case fq: FastqRecord => {
-      lazy val paRegex = """(AAA+A)$""".r.unanchored 
+      lazy val paRegex = """(AAA+A)..$""".r.unanchored 
       (paRegex findFirstMatchIn fq.sequence) map (_.start) match {
         case Some(e) => ct_map("Poly A") += 1; fq.copy(sequence =fq.sequence.take(e), quality = fq.quality.take(e));
         case None => fq
@@ -156,8 +156,8 @@ object SequenceFilters {
     }
 
     case pefq: PEFastqRecord => {
-      lazy val paRegex = """(AAA+A)$""".r.unanchored
-      lazy val ptRegex = """^(TTT+T)""".r.unanchored
+      lazy val paRegex = """(AAA+A)..$""".r.unanchored
+      lazy val ptRegex = """^..(TTT+T)""".r.unanchored
       val paFound = (paRegex findFirstIn pefq.sequence).nonEmpty
       val ptFound = (ptRegex findFirstIn pefq.read2.sequence).nonEmpty
       (paFound, ptFound) match {
@@ -174,7 +174,7 @@ object SequenceFilters {
           pefq.copy(sequence = pefq.sequence.take(idxR1), 
                 quality = pefq.quality.take(idxR1), 
 		read2 = pefq.read2.copy(sequence = pefq.read2.sequence.slice(idxR2, pefq.read2.sequence.size), 
-		        quality = pefq.read2.quality.slice(idxR2, pefq.read2.sequence.size)))
+		        quality = pefq.read2.quality.slice(idxR2, pefq.read2.quality.size)))
 
         case (true, false) =>
           ct_map("Poly A") += 1;
@@ -218,7 +218,7 @@ object SequenceFilters {
 
   def apply(readReader: ReadReader, userOpts: OptionMap, outList: List[OutputStreamWriter]): Map[String, Int] = {
     val filterFunctions = loadFilters(userOpts)
-    if(userOpts.isDefinedAt('polyA)) {
+    if(userOpts.isDefinedAt('minSize)) {
       lazy val szLimit = userOpts('minSize).asInstanceOf[Int]
       readReader.iter.foreach(rec => {
         ct_map("Total Reads") += 1
