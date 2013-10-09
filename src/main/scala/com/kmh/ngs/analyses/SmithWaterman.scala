@@ -2,6 +2,10 @@ package com.kmh.ngs.analyses
 import scala.collection.mutable.ArrayStack
 import scala.math
 
+/**
+ * Implementation of the Smith-Waterman local sequence alignment
+ * algorithm
+ */
 class SmithWaterman(
 	sequence1: String,
 	sequence2: String,
