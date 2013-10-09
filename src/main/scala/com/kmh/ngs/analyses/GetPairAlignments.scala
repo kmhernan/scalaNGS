@@ -6,7 +6,7 @@ import java.io._
 
 object GetPairAlignments extends Logging {
 
-  val rev = Map[Char, Char]('A' -> 'T', 'G' -> 'C', 'T' -> 'A', 'C' -> 'G', 'N' -> '-', '-'->'-')
+  val rev = Map[Char, Char]('A' -> 'T', 'G' -> 'C', 'T' -> 'A', 'C' -> 'G', 'N' -> '-')
   var total = 0
   var overlapping = 0
   var nonoverlapping = 0
@@ -15,10 +15,10 @@ object GetPairAlignments extends Logging {
     reader.iter.foreach {x =>
       total += 1
       val aligner = SmithWaterman(x.sequence, x.read2.sequence.reverse.map(rev(_)).mkString)
-      if (aligner.computeSmithWaterman >= (6 * (x.sequence.size + x.read2.sequence.size) / 4)) {
-        println()
-        println(aligner.alignments(0) + "\n" + aligner.alignments(1).reverse.map(rev(_)).mkString)
-      }
+      //if (aligner.computeSmithWaterman >= 400){ 
+      println(aligner.computeSmithWaterman)
+      println(aligner.alignments.mkString("\n"))
+      //}
     }
 
     println("Total= %s\nOverlapping= %s\nNon-Overlapping= %s\nPercent Overlap= %.3f".format(

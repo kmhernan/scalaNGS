@@ -18,55 +18,98 @@ class SmithWaterman(
 
   var gap = 0
   var alignments = Array.fill[String](2)(null)
+  val alignOne = new StringBuilder()
+  val alignTwo = new StringBuilder()
 
   def computeSmithWaterman: Int = {
-    var i = 0
-    while (i < sequence1.size) {
-      var j = 0
-      while (j < sequence2.size) {
-        gap = o + (l - 1) * e
-        if (i != 0 && j != 0) {
-          if (sequence1(i) == sequence2(j)) {
-            // match
-            l = 0
-            matrix(i)(j) = math.max(0, math.max(
-                             matrix(i - 1)(j - 1) + matched, math.max(
-                               matrix(i - 1)(j) + gap,
-                               matrix(i)(j - 1) + gap)))
-          } else {
-            // gap
-            l += 1
-            matrix(i)(j) = math.max(0, math.max(
-                             matrix(i - 1)(j - 1) + gap, math.max(
-                               matrix(i - 1)(j) + gap,
-                               matrix(i)(j - 1) + gap)))
-          }
-        }
+    var i = 1
+    while (i <= sequence1.size) {
+      var j = 1
+      while (j <= sequence2.size) {
+
+        val scoreDiag = matrix(i - 1)(j - 1) + weight(i, j) 
+        val scoreLeft = matrix(i)(j - 1) - 1
+        val scoreUp = matrix(i - 1)(j) - 1
+        matrix(i)(j) = math.max(math.max(math.max(scoreDiag, scoreLeft), scoreUp), 0)
         j += 1
       }
       i += 1
     }
 
-    // find the highest value
-    var longest = 0
-    var iL = 0
-    var jL = 0
-    i = 0
-    while (i < sequence1.size) {
-      var j = 0
-      while (j < sequence2.size) {
-        if (matrix(i)(j) > longest) {
-          longest = matrix(i)(j)
-          iL = i
-          jL = j
+    // Backtrack
+    i = 1
+    var j = 1
+    var max = matrix(i)(j)
+    
+    var k = 1
+    while (k <= sequence1.size) {
+      var l = 1
+      while (l <= sequence2.size) {
+        if (matrix(k)(l) > max) {
+          i = k
+          j = l
+          max = matrix(k)(l)
         }
-        j += 1
+        l += 1
       }
-      i += 1
+      k += 1
     }
 
+    var mScore= matrix(i)(j)
+
+    k = sequence1.length
+    l = sequence2.length
+
+
+    while (k > i) {
+      alignTwo.append("-")
+      alignOne.append(sequence1(k - 1))
+      k -= 1 
+    }
+    while (l > j) {
+      alignOne.append("-")
+      alignTwo.append(sequence2(l - 1))
+      l -= 1
+    }
+  
+  private def processMatrix(i: Int, j: Int): (Int, Int) = 
+    matrix(i)(j) match {
+      case 0 => (i, j)
+      case e: _ =>  
+    while (matrix(i)(j) != 0) {
+      if (matrix(i)(j) == matrix(i - 1)(j - 1) + weight(i, j)) {
+        alignOne.append(sequence1(i-1))
+        alignTwo.append(sequence2(j-1))
+        i -= 1
+        j -= 1
+      }
+      else if (matrix(i)(j) == matrix(i)(j-1) - 1) {
+        alignOne.append("-")
+        alignTwo.append(sequence2(j-1))
+        j -= 1
+      }
+      else {
+        alignOne.append(sequence1(i-1))
+        alignTwo.append("-")
+        i -= 1
+      }
+    }
+
+    while (i > 0) {
+      alignOne.append("-")
+      alignTwo.append(sequence1(i - 1))
+      i -= 1
+    }
+    while (j > 0) {
+      alignOne.append("-")
+      alignTwo.append(sequence2(j - 1))
+      j -= 1
+    }
+    
+    alignments = Array(alignOne.toString.reverse, alignTwo.toString.reverse)
+    return mScore
     // Back tract to reconstruct path
-    i = iL
+    /*i = iL
     var j = jL
     val actions = new ArrayStack[String]()
 
@@ -88,9 +131,6 @@ class SmithWaterman(
         i = i - 1
       }
     }
-
-    val alignOne = new StringBuilder()
-    val alignTwo = new StringBuilder()
     
     val backActions = actions.clone()
     var z = 0
@@ -127,6 +167,12 @@ class SmithWaterman(
 
     alignments = Array(alignOne.toString, alignTwo.toString)
     return longest
+    */
+  }
+
+  private def weight(i: Int, j: Int): Int = {
+    if (sequence1(i-1) == sequence2(j-1)) 2 
+    else -1 
   }
 
   def printMatrix: Unit = {
@@ -159,13 +205,14 @@ class SmithWaterman(
  */
 object SmithWaterman {
   final val MATCH = 6
-  final val MISMATCH = -10
-  final val O = -6
+  final val MISMATCH = -15
+  final val O = -2
   final val L = 0
-  final val E = -2
+  final val E = -1
 
   def apply(sequence1: String, sequence2: String): SmithWaterman = {
-    val matrix = Array.fill[Int](sequence1.size + 1, sequence2.size + 1)(0)
-    new SmithWaterman("-"+sequence1.replace('N','-'), "-"+sequence2, matrix, MATCH, MISMATCH, O, L, E) 
+    //val matrix = Array.fill[Int](sequence1.size + 1, sequence2.size + 1)(0)
+    val matrix = Array.ofDim[Int](sequence1.size + 1, sequence2.size + 1)
+    new SmithWaterman(sequence1.replace('N','-'), sequence2, matrix, MATCH, MISMATCH, O, L, E) 
   }
 }
