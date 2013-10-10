@@ -36,11 +36,11 @@ class FilterSEIlluminaArgs extends Arguments with Logging {
   val basesArray = Array[String]("A", "C", "G", "T")
  
   def mainUsage = List(
-    "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM SE_illumina ",
+    "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM SE_illumina",
     SP+"-I/-INPUT file.fastq -O/-OUTPUT file.fastq -QV-OFFSET {33,64}",
-    SP+"[-START Int] [-END Int]",
-    SP+"[-HPOLY Double] [-MINQ Int] [-NMISSING Int]",
-    SP+"[-TRIM-POLYA Int] [-h/--help]\n").foreach(println(_))
+    SP+"<[-START Int] [-END Int] | [-CLIP-LEAD String] [-CLIP-POLY String] [-MIN-LENGTH Int] ",
+    SP+"[--KEEP-LEAD] [--KEEP-TAIL]>",
+    SP+"[-HPOLY Double] [-MINQ Int] [-NMISSING Int] [-h/--help]\n").foreach(println(_))
 
   def mainVerboseUsage = {
     mainUsage
@@ -50,13 +50,23 @@ class FilterSEIlluminaArgs extends Arguments with Logging {
       "  -QV-OFFSET      " + "Phred-scaled offset [33, 64]\n",
       "Optional Arguments:",
       "I. Read Clipping Options",
+      "A. Trim by index:",
       "  -START          " + "5' cut position (1-based index).",
       "  -END            " + "3' cut position (1-based index). Ex. AlfI: -START 1 -END 36",
-      "  -TRIM-POLYA     " + "If you wish to remove the Poly-A tail, use with MinimumSize <Int> ",
-      "                  " + "If the trimmed sequence is shorter than MinimumSize, remove it.",
+      "B. Clip lead by string match and/or clip poly-A tail by string match:",
+      "  -CLIP-LEAD      " + "Searches for this sequence (IUPAC) and removes from the start of ",
+      "                  " + "the read to the end of the search sequence. ",
+      "                  " + "E.g., for the Juenger Lab's commonly used oligo: -CLIP-LEAD NNMWGGG",
+      "  -CLIP-TAIL      " + "Searches for this sequence (IUPAC) and removes from the beginning of ",
+      "                  " + "the search sequence to the end of the read. ",
+      "                  " + "E.g., to remove poly-A tail of some size: -CLIP-TAIL AAAAAA",
+      "  -MIN-LENGTH     " + "Remove reads that are not >= this length after clipping",
+      "  --KEEP-LEAD     " + "Keep reads that don't have the lead search sequence. Default, discarded.",
+      "  --KEEP-TAIL     " + "Keep reads that don't have the tail search sequence. Default, discarded.",
 
       "II. Read Filtering Options", 
-      "  -HPOLY          " + "Relative length of repetitive base to consider a homopolymer.", 
+      "  -HPOLY          " + "Remove homopolymers based on the relative length of repetitive base ",
+      "                  " + "to consider a homopolymer.", 
       "                  " + "(Proportion of read length - between 0.0 and 1.0).",
       "  -MINQ           " + "Minimum average quality score allowed (integer).",
       "  -NMISSING       " + "Lower limit for N's allowed.",
@@ -65,10 +75,12 @@ class FilterSEIlluminaArgs extends Arguments with Logging {
 
   def checkRequired(map: OptionMap): OptionMap = {
     if (required.forall(x => map.isDefinedAt(x))) {
-      if (map.isDefinedAt('start) && map.isDefinedAt('clipLead)) {
-        log.error(throw new IllegalArgumentException("Can't use both '-START' and '--CLIP-LEADER'"))
+      if ((map.isDefinedAt('start) || map.isDefinedAt('end)) && 
+          (map.isDefinedAt('clipLead) || map.isDefinedAt('clipTail))) {
+        log.error(throw new IllegalArgumentException("Can't use both '-START/-END' and '-CLIP-LEAD/-CLIP-TAIL'"))
         sys.exit(1)
-      } else
+      } 
+      else
         map
     }
     else if (map.isEmpty) {
@@ -91,12 +103,14 @@ class FilterSEIlluminaArgs extends Arguments with Logging {
       case "-QV-OFFSET" :: value :: tail => parse(map ++ Map('offset->value.toInt), tail)
       case "-START" :: value :: tail => parse(map ++ Map('start->value.toInt), tail)
       case "-END" :: value :: tail => parse(map ++ Map('end->value.toInt), tail)
-      case "--CLIP-LEADER" :: value :: tail => parse(map ++ Map('clipLead->value), tail)
-      case "--KEEP-LEADER" :: value :: tail => parse(map ++ Map('keepLead->value), tail)
+      case "-CLIP-LEAD" :: value :: tail => parse(map ++ Map('clipLead->value), tail)
+      case "--KEEP-LEAD" :: tail => parse(map ++ Map('keepLead->true), tail)
+      case "-CLIP-TAIL" :: value :: tail => parse(map ++ Map('clipTail->value), tail)
+      case "--KEEP-TAIL" :: tail => parse(map ++ Map('keepTail->true), tail)
+      case "-MIN-LENGTH" :: value :: tail => parse(map ++ Map('minSize->value.toInt), tail)
       case "-HPOLY" :: value :: tail => parse(map ++ Map('hpoly->value.toDouble), tail)
       case "-MINQ" :: value :: tail => parse(map ++ Map('minq->value.toInt), tail)
       case "-NMISSING" :: value :: tail => parse(map ++ Map('minN->value.toInt), tail)
-      case "-TRIM-POLYA" :: value :: tail => parse(map ++ Map('minSize->value.toInt), tail)
       case "-h" :: tail => mainVerboseUsage; sys.exit(0)
       case "--help" :: tail => mainVerboseUsage; sys.exit(0)
       case option => mainUsage;

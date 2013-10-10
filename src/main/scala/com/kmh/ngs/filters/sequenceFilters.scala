@@ -38,6 +38,7 @@ object SequenceFilters {
           "Total Reads"->0,
           "Homopolymer"->0,
           "Poly A"->0,
+	  "NotFound"->0,
           "Too Short"->0,
           "Low Quality"->0,
           "Missing Base"->0,
@@ -218,7 +219,23 @@ object SequenceFilters {
 
   def apply(readReader: ReadReader, userOpts: OptionMap, outList: List[OutputStreamWriter]): Map[String, Int] = {
     val filterFunctions = loadFilters(userOpts)
-    if(userOpts.isDefinedAt('minSize)) {
+    readReader.iter.foreach(rec => {
+      ct_map("Total Reads") += 1
+      ReadClippers(rec, userOpts) match {
+        case Some(rd) => rd match {
+          case fq: FastqRecord =>
+            if (fq.sequence.length < userOpts.getOrElse('minSize, fq.sequence.length).asInstanceOf[Int])
+              ct_map("Too Short") += 1
+            else
+              filterFunctions.find(_((fq, userOpts)) == true) match {
+                case None => ct_map("Passed") += 1; fq.writeToFile(outList);
+                case Some(_) => null
+              }
+        } 
+        case None => ct_map("NotFound") += 1 
+      }
+    }) 
+      /*if(userOpts.isDefinedAt('minSize)) {
       lazy val szLimit = userOpts('minSize).asInstanceOf[Int]
       readReader.iter.foreach(rec => {
         ct_map("Total Reads") += 1
@@ -249,7 +266,7 @@ object SequenceFilters {
           case None => ct_map("Passed") += 1; rec.writeToFile(outList);
           case Some(_) => null
         }
-      })
+      })*/
     ct_map
   }
 

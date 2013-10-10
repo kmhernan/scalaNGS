@@ -34,9 +34,7 @@ import org.eintr.loglady.Logging
 
 case class FastqReader(
 	val seqReader: BufferedReader,
-	val seqFile: File,
-        val start: Option[Int],
-        val end: Option[Int]) extends ReadReader with Logging {
+	val seqFile: File) extends ReadReader with Logging {
   var nextRecord: FastqRecord = readNextRecord
 
   def readNextRecord: FastqRecord = {
@@ -50,7 +48,7 @@ case class FastqReader(
         log.error(throw new RuntimeException("Invalid sequence header type"))
 
       // Sequence
-      val seqLine: String = trim(start, end, seqReader.readLine())
+      val seqLine: String = seqReader.readLine()
 
       // Quality Header
       val qualHeader: String = seqReader.readLine()
@@ -58,7 +56,7 @@ case class FastqReader(
         log.error(throw new RuntimeException("Invalid quality header type"))
 
       // Quality
-      val qualLine: String = trim(start, end, seqReader.readLine())
+      val qualLine: String = seqReader.readLine()
 
       // Check if sequence and quality are same lengths
       if (seqLine.length != qualLine.length)
@@ -73,22 +71,6 @@ case class FastqReader(
         log.error("Error reading fastq file '%s'".format(seqFile.getName(), ioe));
         seqReader.close();
         sys.exit(1)
-    }
-  }
-
-  /**
-   * Trims sequence and qual based on user-input
-   *
-   * @param st - [[Option[Int]] start position (1-based index).
-   * @param en - [[Option[Int]] end position (1-based index).
-   * @param string - Either quality or sequence to trim.
-   */
-  def trim(st: Option[Int], en: Option[Int], string: String): String = {
-    (st, en) match {
-      case (Some(st), Some(en)) => string.slice(st-1, en)
-      case (Some(st), None) => string.slice(st-1, string.length)
-      case (None, Some(en)) => string.slice(0, en)
-      case (None, None) => string
     }
   }
 

@@ -130,9 +130,7 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
         val outputBufferList = outputFileList.map(ioInit.openFileForWriting(_)) 
         (inputBufferList, 
          outputBufferList,
-         new FastqReader(inputBufferList(0), inputFileList(0), 
-		 if (userOpts.isDefinedAt('start)) Some(userOpts('start).asInstanceOf[Int]) else None,
-		 if (userOpts.isDefinedAt('end)) Some(userOpts('end).asInstanceOf[Int]) else None))
+         new FastqReader(inputBufferList(0), inputFileList(0))) 
       }
       case "PE_illumina" => {
         if (userOpts.isDefinedAt('inInter)) {
@@ -184,7 +182,6 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
     outputBufferList.map(ioInit.closer(_))
     readReader match {
       case cs: CSFastaReader =>
-        val logCS = new StringBuilder()
         log.info(
              "FILE=[%s, %s] ".format(userOpts('incsfa).asInstanceOf[File].getName(), 
                                      userOpts('incsq).asInstanceOf[File].getName())+
