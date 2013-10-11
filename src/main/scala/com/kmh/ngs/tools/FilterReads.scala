@@ -130,9 +130,7 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
         val outputBufferList = outputFileList.map(ioInit.openFileForWriting(_)) 
         (inputBufferList, 
          outputBufferList,
-         new FastqReader(inputBufferList(0), inputFileList(0), 
-		 if (userOpts.isDefinedAt('start)) Some(userOpts('start).asInstanceOf[Int]) else None,
-		 if (userOpts.isDefinedAt('end)) Some(userOpts('end).asInstanceOf[Int]) else None))
+         new FastqReader(inputBufferList(0), inputFileList(0))) 
       }
       case "PE_illumina" => {
         if (userOpts.isDefinedAt('inInter)) {
@@ -145,12 +143,7 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
           val outputBufferList = outputFileList.map(ioInit.openFileForWriting(_)) 
           (inputBufferList, 
            outputBufferList,
-           new PEFastqReader(inputBufferList(0), None, 
-                 inputFileList(0), None,
-		 if (userOpts.isDefinedAt('r1Five)) Some(userOpts('r1Five).asInstanceOf[Int]) else None,
-		 if (userOpts.isDefinedAt('r1Three)) Some(userOpts('r1Three).asInstanceOf[Int]) else None,
-		 if (userOpts.isDefinedAt('r2Five)) Some(userOpts('r2Five).asInstanceOf[Int]) else None,
-		 if (userOpts.isDefinedAt('r2Three)) Some(userOpts('r2Three).asInstanceOf[Int]) else None))
+           new PEFastqReader(inputBufferList(0), None, inputFileList(0), None))
         } else {
           val inputFileList = List(userOpts('inR1), userOpts('inR2)).map(_.asInstanceOf[File])
           val outputFileList = 
@@ -161,12 +154,7 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
           val outputBufferList = outputFileList.map(ioInit.openFileForWriting(_)) 
           (inputBufferList, 
            outputBufferList,
-           new PEFastqReader(inputBufferList(0), Some(inputBufferList(1)), 
-                 inputFileList(0), Some(inputFileList(1)), 
-		 if (userOpts.isDefinedAt('r1Five)) Some(userOpts('r1Five).asInstanceOf[Int]) else None,
-		 if (userOpts.isDefinedAt('r1Three)) Some(userOpts('r1Three).asInstanceOf[Int]) else None,
-		 if (userOpts.isDefinedAt('r2Five)) Some(userOpts('r2Five).asInstanceOf[Int]) else None,
-		 if (userOpts.isDefinedAt('r2Three)) Some(userOpts('r2Three).asInstanceOf[Int]) else None))
+           new PEFastqReader(inputBufferList(0), Some(inputBufferList(1)), inputFileList(0), Some(inputFileList(1)))) 
         }
     }
   }
@@ -184,7 +172,6 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
     outputBufferList.map(ioInit.closer(_))
     readReader match {
       case cs: CSFastaReader =>
-        val logCS = new StringBuilder()
         log.info(
              "FILE=[%s, %s] ".format(userOpts('incsfa).asInstanceOf[File].getName(), 
                                      userOpts('incsq).asInstanceOf[File].getName())+
@@ -201,8 +188,8 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
              "MISSING="+ct_map("Missing Base")+" "+
              "LOWQ="+ct_map("Low Quality")+" "+
              "HOMOPOLYMER="+ct_map("Homopolymer")+" "+
-             "POLYA="+ct_map("Poly A")+" "+
              "TOOSHORT="+ct_map("Too Short")+" "+
+             "NOTFOUND="+ct_map("NotFound")+" "+
              "PASSED="+ct_map("Passed")+" "+
              "RATIO=%.2f".format(ct_map("Passed")/ct_map("Total Reads").toDouble))
       case pefq: PEFastqReader =>
@@ -213,8 +200,8 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
                "MISSING="+ct_map("Missing Base")+" "+
                "LOWQ="+ct_map("Low Quality")+" "+
                "HOMOPOLYMER="+ct_map("Homopolymer")+" "+
-               "POLYA="+ct_map("Poly A")+" "+
                "TOOSHORT="+ct_map("Too Short")+" "+
+               "NOTFOUND="+ct_map("NotFound")+" "+
                "PASSED="+ct_map("Passed")+" "+
                "RATIO=%.2f".format(ct_map("Passed")/ct_map("Total Reads").toDouble))
         else
@@ -225,8 +212,8 @@ class FilterReads(val args: List[String]) extends NGSApp with Logging {
                "MISSING="+ct_map("Missing Base")+" "+
                "LOWQ="+ct_map("Low Quality")+" "+
                "HOMOPOLYMER="+ct_map("Homopolymer")+" "+
-               "POLYA="+ct_map("Poly A")+" "+
                "TOOSHORT="+ct_map("Too Short")+" "+
+               "NOTFOUND="+ct_map("NotFound")+" "+
                "PASSED="+ct_map("Passed")+" "+
                "RATIO=%.2f".format(ct_map("Passed")/ct_map("Total Reads").toDouble))
     }

@@ -28,7 +28,7 @@
 
 package com.kmh.ngs.filters
 import com.kmh.ngs.formats.{Read, CSFastaRecord, FastqRecord, PEFastqRecord}
-import com.kmh.ngs.readers.ReadReader
+import com.kmh.ngs.readers.{ReadReader, CSFastaReader, FastqReader, PEFastqReader}
 import java.io.OutputStreamWriter
 import scala.collection.mutable.{ListBuffer, Map}
 
@@ -38,6 +38,7 @@ object SequenceFilters {
           "Total Reads"->0,
           "Homopolymer"->0,
           "Poly A"->0,
+	  "NotFound"->0,
           "Too Short"->0,
           "Low Quality"->0,
           "Missing Base"->0,
@@ -148,7 +149,7 @@ object SequenceFilters {
    */ 
   def removePolyA(rec: Read): Read = rec match {
     case fq: FastqRecord => {
-      lazy val paRegex = """(AAA+A)$""".r.unanchored 
+      lazy val paRegex = """(AAA+A)..$""".r.unanchored 
       (paRegex findFirstMatchIn fq.sequence) map (_.start) match {
         case Some(e) => ct_map("Poly A") += 1; fq.copy(sequence =fq.sequence.take(e), quality = fq.quality.take(e));
         case None => fq
@@ -156,8 +157,8 @@ object SequenceFilters {
     }
 
     case pefq: PEFastqRecord => {
-      lazy val paRegex = """(AAA+A)$""".r.unanchored
-      lazy val ptRegex = """^(TTT+T)""".r.unanchored
+      lazy val paRegex = """(AAA+A)..$""".r.unanchored
+      lazy val ptRegex = """^..(TTT+T)""".r.unanchored
       val paFound = (paRegex findFirstIn pefq.sequence).nonEmpty
       val ptFound = (ptRegex findFirstIn pefq.read2.sequence).nonEmpty
       (paFound, ptFound) match {
@@ -174,7 +175,7 @@ object SequenceFilters {
           pefq.copy(sequence = pefq.sequence.take(idxR1), 
                 quality = pefq.quality.take(idxR1), 
 		read2 = pefq.read2.copy(sequence = pefq.read2.sequence.slice(idxR2, pefq.read2.sequence.size), 
-		        quality = pefq.read2.quality.slice(idxR2, pefq.read2.sequence.size)))
+		        quality = pefq.read2.quality.slice(idxR2, pefq.read2.quality.size)))
 
         case (true, false) =>
           ct_map("Poly A") += 1;
@@ -218,39 +219,43 @@ object SequenceFilters {
 
   def apply(readReader: ReadReader, userOpts: OptionMap, outList: List[OutputStreamWriter]): Map[String, Int] = {
     val filterFunctions = loadFilters(userOpts)
-    if(userOpts.isDefinedAt('polyA)) {
-      lazy val szLimit = userOpts('minSize).asInstanceOf[Int]
-      readReader.iter.foreach(rec => {
-        ct_map("Total Reads") += 1
-        val recWithoutPoly = removePolyA(rec)
-        recWithoutPoly match {
-          case fq: FastqRecord => 
-            if (fq.sequence.length < szLimit)
-              ct_map("Too Short") += 1
-            else
-              filterFunctions.find(_((fq, userOpts)) == true) match {
-                case None => ct_map("Passed") += 1; fq.writeToFile(outList);
-                case Some(_) => null
-              }
-          case pefq: PEFastqRecord => 
-            if (pefq.sequence.length < szLimit || pefq.read2.sequence.length < szLimit)
-              ct_map("Too Short") += 1
-            else
-              filterFunctions.find(_((pefq, userOpts)) == true) match {
-                case None => ct_map("Passed") += 1; pefq.writeToFile(outList);
-                case Some(_) => null
-              }
-        }
-      })
-    } else
-      readReader.iter.foreach(rec => {
+    readReader match {
+      case _: CSFastaReader => readReader.iter.foreach(rec => {
         ct_map("Total Reads") += 1
         filterFunctions.find(_((rec, userOpts)) == true) match {
           case None => ct_map("Passed") += 1; rec.writeToFile(outList);
           case Some(_) => null
         }
       })
-    ct_map
-  }
 
+      case _ =>
+        readReader.iter.foreach(rec => {
+          ct_map("Total Reads") += 1
+          ReadClippers(rec, userOpts) match {
+            case Some(rd) => rd match {
+              case fq: FastqRecord => 
+                if (fq.sequence.length < userOpts.getOrElse('minSize, fq.sequence.length).asInstanceOf[Int])
+                  ct_map("Too Short") += 1
+                else filterFunctions.find(_((fq, userOpts)) == true) match {
+                  case None => ct_map("Passed") += 1; fq.writeToFile(outList);
+                  case Some(_) => null
+                }
+
+              case pefq: PEFastqRecord =>
+                if (pefq.sequence.length <
+                    userOpts.getOrElse('minSize, pefq.sequence.length).asInstanceOf[Int] ||
+                    pefq.read2.sequence.length < 
+                    userOpts.getOrElse('minSize, pefq.sequence.length).asInstanceOf[Int])
+                  ct_map("Too Short") += 1
+                else filterFunctions.find(_((pefq, userOpts)) == true) match { 
+                  case None => ct_map("Passed") += 1; pefq.writeToFile(outList);
+                  case Some(_) => null
+                }
+              }
+            case None => ct_map("NotFound") += 1
+          }
+        })
+    }
+    ct_map
+  } 
 } 

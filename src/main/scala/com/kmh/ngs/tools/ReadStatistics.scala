@@ -120,14 +120,14 @@ class ReadStatistics(val args: List[String]) extends NGSApp with Logging {
       ioInit.assertFileIsReadable(inputFile)
       val inputBuffer  = ioInit.openFileForBufferedReading(inputFile)
       val outputBuffer = ioInit.openFileForWriting(outputFile) 
-      (inputBuffer, Some(outputBuffer), Some(new FastqReader(inputBuffer, inputFile, None, None))) 
+      (inputBuffer, Some(outputBuffer), Some(new FastqReader(inputBuffer, inputFile))) 
     }
 
     else if (userOpts.isDefinedAt('input) && !userOpts.isDefinedAt('ostat)) {
       val inputFile    = userOpts('input).asInstanceOf[File]
       ioInit.assertFileIsReadable(inputFile)
       val inputBuffer  = ioInit.openFileForBufferedReading(inputFile)
-      (inputBuffer, None, Some(new FastqReader(inputBuffer, inputFile, None, None))) 
+      (inputBuffer, None, Some(new FastqReader(inputBuffer, inputFile)))
     }
     // Should never happen 
     else {
