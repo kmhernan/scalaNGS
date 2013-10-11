@@ -38,8 +38,8 @@ class FilterSEIlluminaArgs extends Arguments with Logging {
   def mainUsage = List(
     "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM SE_illumina",
     SP+"-I/-INPUT file.fastq -O/-OUTPUT file.fastq -QV-OFFSET {33,64}",
-    SP+"<[-START Int] [-END Int] | [-CLIP-LEAD String] [-CLIP-POLY String] [-MIN-LENGTH Int] ",
-    SP+"[--KEEP-LEAD] [--KEEP-TAIL]>",
+    SP+"{[-START Int] [-END Int] | [-CLIP-LEAD String] [-CLIP-POLY String] [-MIN-LENGTH Int] ",
+    SP+"[--KEEP-LEAD] [--KEEP-TAIL]}",
     SP+"[-HPOLY Double] [-MINQ Int] [-NMISSING Int] [-h/--help]\n").foreach(println(_))
 
   def mainVerboseUsage = {
@@ -53,12 +53,12 @@ class FilterSEIlluminaArgs extends Arguments with Logging {
       "A. Trim by index:",
       "  -START          " + "5' cut position (1-based index).",
       "  -END            " + "3' cut position (1-based index). Ex. AlfI: -START 1 -END 36",
-      "B. Clip lead by string match and/or clip poly-A tail by string match:",
+      "B. Clip lead by string match and/or clip tail by string match:",
       "  -CLIP-LEAD      " + "Searches for this sequence (IUPAC) and removes from the start of ",
-      "                  " + "the read to the end of the search sequence. ",
-      "                  " + "E.g., for the Juenger Lab's commonly used oligo: -CLIP-LEAD NNMWGGG",
+      "                  " + "the read to the end of the search sequence. You can add in the regex char '+'",
+      "                  " + "E.g., for the Juenger Lab's commonly used oligo: -CLIP-LEAD NNMWGGG+",
       "  -CLIP-TAIL      " + "Searches for this sequence (IUPAC) and removes from the beginning of ",
-      "                  " + "the search sequence to the end of the read. ",
+      "                  " + "the search sequence to the end of the read. You can add in the regex char '+'",
       "                  " + "E.g., to remove poly-A tail of some size: -CLIP-TAIL AAAAAA",
       "  -MIN-LENGTH     " + "Remove reads that are not >= this length after clipping",
       "  --KEEP-LEAD     " + "Keep reads that don't have the lead search sequence. Default, discarded.",

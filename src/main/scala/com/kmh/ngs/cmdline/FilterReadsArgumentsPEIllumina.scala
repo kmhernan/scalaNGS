@@ -38,9 +38,10 @@ class FilterPEIlluminaArgs extends Arguments with Logging {
     "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM PE_illumina ",
     SP+"{-R1/-READ1 file_R1.fastq -R2/-READ2 file_R2.fastq | -INTER file_R1_R2.fastq} ",
     SP+"{-O1/-OUTREAD1 file_R1.fastq -O2/-OUTREAD2 file_R2.fastq | -OUT-INTER file_R1_R2.fastq} ",
-    SP+"-QV-OFFSET {33, 64} [-R1-FIVE Int] [-R1-THREE Int] [-R2-FIVE Int] [-R2-THREE Int] ",
-    SP+"[-HPOLY Double] [-MINQ Int] [-NMISSING Int]",
-    SP+"[-TRIM-POLYA Int] [-h/--help]\n").foreach(println(_))
+    SP+"{[-R1-TRIM-5 Int] [-R1-TRIM-3 Int] [-R2-TRIM-5 Int] [-R2-TRIM-3 Int] | ",
+    SP+" [-R1-CLIP-5 String] [-R1-CLIP-3 String] [-R2-CLIP-5 String] [-R2-CLIP-3 String] ",
+    SP+" [--R1-KEEP-5] [--R1-KEEP-3] [--R2-KEEP-5] [--R2-KEEP-3] [-MIN-LENGTH Int]} ",
+    SP+"-QV-OFFSET {33,64} [-HPOLY Double] [-MINQ Int] [-NMISSING Int] [-h/--help]\n").foreach(println(_))
 
   def mainVerboseUsage = {
     mainUsage
@@ -56,20 +57,42 @@ class FilterPEIlluminaArgs extends Arguments with Logging {
       "  -O2/-OUTPUT2 <String>\tOutput separated fastq file for second paired-end: <file_R2.fastq>",
       "  -OUT-INTER <String>\tOutput interleaved fastq file: <file_R1_R2.fastq>\n",
       "  -QV-OFFSET <Int>\tPhred-scaled offset [33, 64]\n").foreach(println(_))
+
     List("Optional Arguments:\n",
-      "I. Read Clipping Options:",
+      "I. Read Clipping Options - I assume these are Illumina paired-end reads where R1 is forward and R2 is ",
+      "                           the reverse strand. Thus, when looking at the FASTQ file, R1 goes from 5'->3' ",
+      "                           while R2 goes from 3'->5'.",
+      "A. Trim by index:",
       "  -R1-TRIM-5   " + "5' cut position for Read 1 (1-based index) ** Assumes R1 is forward strand **",
       "  -R1-TRIM-3   " + "3' cut position for Read 1 (1-based index) ** Assumes R1 is forward strand **",
       "  -R2-TRIM-5   " + "5' cut position for Read 2 (1-based index) ** Assumes R2 is reverse strand **",
       "  -R2-TRIM-3   " + "3' cut position for Read 2 (1-based index) ** Assumes R2 is reverse strand **",
-      "  -TRIM-POLYA  " + "If you wish to remove the Poly-A tail, use with MinimumSize <Int> ",
-      "               " + "If the trimmed sequence is shorter than MinimumSize, remove it.",
+      "B. Clip lead/tail by string match:",
+      "  -R1-CLIP-5   " + "Searches for this sequence (IUPAC) and removes from the start of R1 to the end",
+      "               " + "of the the search sequence. You can add the regex char '+'",
+      "               " + "E.g., for the Juenger Lab's commonly used oligo: -R1-CLIP-5 NNMWGGG+",
+      "  -R1-CLIP-3   " + "Searches for this sequence (IUPAC) and removes from the start of the search",
+      "               " + "sequence to the end of R1. You can add the regex char '+'",
+      "               " + "E.g., remove poly-A tail of some size from R1: -R1-CLIP-3 AAAAAA",
+      "  -R2-CLIP-5   " + "Searches for this sequence (IUPAC) and removes from the 5' end of R2 to the end",
+      "               " + "of the the search sequence. You can add the regex char '+'",
+      "  -R2-CLIP-3   " + "Searches for this sequence (IUPAC) and removes from the 3' of the search",
+      "               " + "sequence to the end of R1. You can add the regex char '+'",
+      "               " + "E.g., remove poly-T tail of some size from R2: -R2-CLIP-3 TTTTTT",
+      "  --R1-KEEP-5  " + "Keep reads that don't have the -R1-CLIP-5 sequence. Default, discarded.",
+      "  --R1-KEEP-3  " + "Keep reads that don't have the -R1-CLIP-3 sequence. Default, discarded.",
+      "               " + "** If you're trimming Poly-A tail, you will want to use this flag! **",
+      "  --R2-KEEP-5  " + "Keep reads that don't have the -R2-CLIP-5 sequence. Default, discarded.",
+      "  --R2-KEEP-3  " + "Keep reads that don't have the -R2-CLIP-3 sequence. Default, discarded.",
+      "               " + "** If you're trimming Poly-T from R2, you will want to use this flag! **",
+      "  -MIN-LENGTH  " + "Remove reads that are not >= this length after clipping.",
+      
       "II. Read Filtering Options",
       "  -HPOLY       " + "Relative length of repetitive base to consider a homopolymer. ", 
       "               " + "(Proportion of read length; e.g., between 0 and 1)",
       "  -MINQ        " + "Minimum average quality score allowed.",
       "  -NMISSING    " + "Lower limit for N's allowed.",
-      "  -h/--help\t\tPrint this message and exit.\n").foreach(println(_))
+      "  -h/--help    " + "Print this message and exit.\n").foreach(println(_))
   }
 
   def checkRequired(map: OptionMap): OptionMap = {
@@ -131,10 +154,18 @@ class FilterPEIlluminaArgs extends Arguments with Logging {
       case "-R1-TRIM-3" :: value :: tail => parse(map ++ Map('r1Three->value.toInt), tail)
       case "-R2-TRIM-5" :: value :: tail => parse(map ++ Map('r2Five->value.toInt), tail)
       case "-R2-TRIM-3" :: value :: tail => parse(map ++ Map('r2Three->value.toInt), tail)
+      case "-R1-CLIP-5" :: value :: tail => parse(map ++ Map('r1ClipFive->value), tail)
+      case "-R1-CLIP-3" :: value :: tail => parse(map ++ Map('r1ClipThree->value), tail)
+      case "-R2-CLIP-5" :: value :: tail => parse(map ++ Map('r2ClipFive->value), tail)
+      case "-R2-CLIP-3" :: value :: tail => parse(map ++ Map('r2ClipThree->value), tail)
+      case "--R1-KEEP-5" :: value :: tail => parse(map ++ Map('r1KeepFive->true), tail)
+      case "--R1-KEEP-3" :: value :: tail => parse(map ++ Map('r1KeepThree->true), tail)
+      case "--R2-KEEP-5" :: value :: tail => parse(map ++ Map('r2KeepFive->true), tail)
+      case "--R2-KEEP-3" :: value :: tail => parse(map ++ Map('r2KeepThree->true), tail)
+      case "-MIN-LENGTH" :: value :: tail => parse(map ++ Map('minSize->value.toInt), tail)
       case "-HPOLY" :: value :: tail => parse(map ++ Map('hpoly->value.toDouble), tail)
       case "-MINQ" :: value :: tail => parse(map ++ Map('minq->value.toInt), tail)
       case "-NMISSING" :: value :: tail => parse(map ++ Map('minN->value.toInt), tail)
-      case "-TRIM-POLYA" :: value :: tail => parse(map ++ Map('minSize->value.toInt), tail)
       case "-h" :: tail => mainVerboseUsage; sys.exit(0)
       case "--help" :: tail => mainVerboseUsage; sys.exit(0)
       case option => mainUsage;

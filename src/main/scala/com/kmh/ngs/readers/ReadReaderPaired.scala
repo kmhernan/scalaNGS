@@ -36,11 +36,7 @@ case class PEFastqReader(
 	val seqReader: BufferedReader,
 	val mateReader: Option[BufferedReader],
 	val seqFile: File,
-	val mateFile: Option[File],
-        val r1Five: Option[Int],
-        val r1Three: Option[Int],
-	val r2Five: Option[Int],
-	val r2Three: Option[Int]) extends ReadReader with Logging {
+	val mateFile: Option[File]) extends ReadReader with Logging {
   var nextRecord: PEFastqRecord = readNextRecord
 
   def readNextRecord: PEFastqRecord = 
@@ -57,8 +53,8 @@ case class PEFastqReader(
             log.error(throw new RuntimeException("Invalid sequence header type"))
 
           // Sequence
-          val r1Line: String = trimR1(r1Five, r1Three, seqReader.readLine())
-          val r2Line: String = trimR2(r2Five, r2Three, mateReader.readLine())
+          val r1Line: String = seqReader.readLine()
+          val r2Line: String = mateReader.readLine()
 
           // Quality Header
           val q1Header: String = seqReader.readLine()
@@ -67,8 +63,8 @@ case class PEFastqReader(
             log.error(throw new RuntimeException("Invalid quality header type"))
 
           // Quality
-          val q1Line: String = trimR1(r1Five, r1Three, seqReader.readLine())
-          val q2Line: String = trimR2(r2Five, r2Three, mateReader.readLine())
+          val q1Line: String = seqReader.readLine()
+          val q2Line: String = mateReader.readLine()
 
           // Check if sequence and quality are same lengths
           if (r1Line.length != q1Line.length || r2Line.length != q2Line.length)
@@ -97,7 +93,7 @@ case class PEFastqReader(
             log.error(throw new RuntimeException("Invalid sequence header type"))
        
           // Sequence
-          val r1Line: String = trimR1(r1Five, r1Three, seqReader.readLine())
+          val r1Line: String = seqReader.readLine()
 
       	  // Quality Header
           val q1Header: String = seqReader.readLine()
@@ -105,7 +101,7 @@ case class PEFastqReader(
             log.error(throw new RuntimeException("Invalid quality header type"))
 
           // Quality
-          val q1Line: String = trimR1(r1Five, r1Three, seqReader.readLine())
+          val q1Line: String = seqReader.readLine()
       
           // Read 2
           val r2Header: String = seqReader.readLine()
@@ -113,7 +109,7 @@ case class PEFastqReader(
             log.error(throw new RuntimeException("Invalid sequence header type"))
        
           // Sequence
-          val r2Line: String = trimR2(r2Five, r2Three, seqReader.readLine())
+          val r2Line: String = seqReader.readLine()
 
           // Quality Header
           val q2Header: String = seqReader.readLine()
@@ -121,7 +117,7 @@ case class PEFastqReader(
             log.error(throw new RuntimeException("Invalid quality header type"))
 
           // Quality
-          val q2Line: String = trimR2(r2Five, r2Three, seqReader.readLine())
+          val q2Line: String = seqReader.readLine()
 
           // Check if sequence and quality are same lengths
           if (r1Line.length != q1Line.length || r2Line.length != q2Line.length)
@@ -143,31 +139,6 @@ case class PEFastqReader(
         seqReader.close();
         sys.exit(1)
       }
-
-  /**
-   * Trims sequence and qual based on user-input
-   *
-   * @param five - [[Option[Int]] start position (1-based index).
-   * @param three - [[Option[Int]] end position (1-based index).
-   * @param string - Either quality or sequence to trim.
-   */
-  def trimR1(five: Option[Int], three: Option[Int], string: String): String = {
-    (five, three) match {
-      case (Some(five), Some(three)) => string.slice(five-1, three)
-      case (Some(five), None) => string.slice(five-1, string.length)
-      case (None, Some(three)) => string.slice(0, three)
-      case (None, None) => string
-    }
-  }
-
-  def trimR2(five: Option[Int], three: Option[Int], string: String): String = {
-    (five, three) match {
-      case (Some(five), Some(three)) => string.reverse.slice(five-1, three).reverse
-      case (Some(five), None) => string.reverse.slice(five-1, string.length).reverse
-      case (None, Some(three)) => string.reverse.slice(0, three).reverse
-      case (None, None) => string
-    }
-  }
 
   def hasNext: Boolean = { nextRecord != null }
 
