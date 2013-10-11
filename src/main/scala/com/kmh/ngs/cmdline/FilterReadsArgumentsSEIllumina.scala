@@ -38,7 +38,7 @@ class FilterSEIlluminaArgs extends Arguments with Logging {
   def mainUsage = List(
     "usage: java -jar NGSTools.jar -T FilterReads -P/-PLATFORM SE_illumina",
     SP+"-I/-INPUT file.fastq -O/-OUTPUT file.fastq -QV-OFFSET {33,64}",
-    SP+"[-START Int] [-END Int] { [-CLIP-LEAD String] [-CLIP-POLY String]",
+    SP+"[-START Int] [-END Int] { [-CLIP-LEAD String] [-CLIP-TAIL String]",
     SP+"[-MIN-LENGTH Int] [--KEEP-LEAD] [--KEEP-TAIL]}",
     SP+"[-HPOLY Double] [-MINQ Int] [-NMISSING Int] [-h/--help]\n").foreach(println(_))
 
