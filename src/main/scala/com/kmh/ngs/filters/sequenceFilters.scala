@@ -245,7 +245,7 @@ object SequenceFilters {
                 if (pefq.sequence.length <
                     userOpts.getOrElse('minSize, pefq.sequence.length).asInstanceOf[Int] ||
                     pefq.read2.sequence.length < 
-                    userOpts.getOrElse('minSize, pefq.sequence.length).asInstanceOf[Int])
+                    userOpts.getOrElse('minSize, pefq.read2.sequence.length).asInstanceOf[Int])
                   ct_map("Too Short") += 1
                 else filterFunctions.find(_((pefq, userOpts)) == true) match { 
                   case None => ct_map("Passed") += 1; pefq.writeToFile(outList);
