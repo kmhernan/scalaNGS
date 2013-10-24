@@ -30,7 +30,7 @@
 package com.kmh.ngs.io
 
 import java.io._
-import java.util.zip.GZIPInputStream
+import java.util.zip.{GZIPInputStream, GZIPOutputStream}
 import org.eintr.loglady.Logging
 import scala.io.BufferedSource
 
@@ -128,19 +128,34 @@ class IoUtil extends Logging {
 
   /**
    * Opens a file for writing. Throw exception if unable to open stream.
-   * Curerntly doesn't support zipped files.
    *
    * @param file the file to output to
    * @return OutputStreamWriter
    * @throws [[IOException]]
    */
   def openFileForWriting(file: File): OutputStreamWriter = {
+    if (file.getName().endsWith(".gz"))
+      openGzipOutputStream(file)
+    else
+      openOutputStream(file)
+  }
+
+  def openGzipOutputStream(file: File): OutputStreamWriter = {
+    try
+        new OutputStreamWriter(new GZIPOutputStream(new FileOutputStream(file)))
+    catch {
+      case ioe: IOException => log.error("Error opening file: " + file.getName() + " " + ioe); sys.exit(1);
+      case e: Throwable => log.error("Unhandled Exception!\n" + e.printStackTrace()); sys.exit(1);
+    }
+  }
+
+  def openOutputStream(file: File): OutputStreamWriter = {
     try
       new OutputStreamWriter(new FileOutputStream(file))
     catch {
       case ioe: IOException => log.error("Error opening file: " + file.getName() + " " + ioe); sys.exit(1);
       case e: Throwable => log.error("Unhandled Exception!\n" + e.printStackTrace()); sys.exit(1);
-    } 
+    }
   }
 
   /**
